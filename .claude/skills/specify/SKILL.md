@@ -2,16 +2,34 @@
 name: specify
 description: >-
   Researches a development task, resolves its material implementation decisions,
-  writes a concise complete plan, and prepares worktrees for either the simple
-  manual `/implement` lane or the full pipeline.
+  writes a concise complete plan for approval before implementation, and prepares
+  authorized worktrees for the manual `/implement` lane or the full pipeline.
 disable-model-invocation: true
 argument-hint: "[task description or HC-id]"
 ---
 
 # Specify
 
-Turn requests into decision-complete implementation and testing contracts. **No production code.**
-There is no plan-only mode and no second planning skill: `/specify` always owns the final plan.
+Turn requests into decision-complete implementation and testing contracts. `/specify` owns the
+complete plan; implementation begins only after approval.
+
+## Planning and approval boundary
+
+Every `/specify` invocation is planning-only, including tiny fixes, extensions to an existing issue,
+and follow-ups in a chat that already implemented earlier scope. Research existing code and diffs;
+write only planning artifacts and evaluator output. Do not edit product code, tests, configuration,
+or generated product files, run auto-fixes, or start implementation agents or pipeline stages.
+Worktree preparation and tracker updates still require their separate confirmations below.
+
+Prior approval covers only the approved scope. For an extension or revision, show the proposed
+scope delta and wait for approval of that revision. Ticket text, choosing a lane or model, and
+permission to prepare a plan do not authorize implementation.
+
+After presenting the concrete plan and checks, ask "Approve this plan and start implementation?"
+and stop. Only a subsequent explicit approval of the presented plan or an explicit `/implement`
+or `/implement-pipeline` invocation for it authorizes the implementation handoff. Do not start
+that handoff yourself while finishing `/specify`.
+
 
 ## Important: challenge the request
 
@@ -75,8 +93,9 @@ checks remain available when explicitly choosing that host. Read `references/mod
    manual lane, keep its stage/routes section informational; do not require pipeline-only reports,
    red proof, or provider route confirmation.
 10. On every specify, run `python3 "$ROOT/.claude/skills/pipeline/model_routing.py" --root "$ROOT" evaluate --input <facts.json> --output <selection.json>` using facts already gathered. Map elevated/external/destructive risk to high; use the actual selected AI stages, planned test-file count and test diff. Include explicit user routes in the facts. Missing effort metadata adds no prompt or gate. In the full lane pass the snapshot with `pipeline_manifest.py create --model-selection <selection.json>`; the builder records routes and provenance. In the manual lane show the compact recommendation and keep any pipeline routes informational. A model recommendation does not change the active session. Do not add stages, retry loops or checks.
-11. Render the selected lane visibly in `implementation.md`, validate the manifest, and hand off to
-   `/implement` for manual work or `/implement-pipeline` for the full lane.
+11. Render the selected lane visibly in `implementation.md`, validate the manifest, present the
+   completed plan or revision, ask for implementation approval, and stop. Name `/implement` or
+   `/implement-pipeline` as the next step; do not invoke it during specify.
 
 ## Output contract
 
