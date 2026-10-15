@@ -259,6 +259,9 @@ No item adds a recurring model call.
 
 ## Maintenance log
 
+- 2026-10-15: `/publish-workflow` pull request bodies are a few short bullets for the
+  commands, pipeline, tests, and docs that changed.
+
 - 2026-10-15: A branch can attach any other `apaleo` org repository with
   `worktree-start --with <name>`. The five parked clones stay as they are. An existing
   `$ROOT/<name>` checkout of that repository is the worktree source; otherwise the first
