@@ -199,7 +199,7 @@ pr_bullets() {
       .claude/skills/pipeline/*)
         pipeline=1
         ;;
-      WORKFLOW.md|AGENTS.md|CLAUDE.md|README.md|.claude/skills/references/*)
+      WORKFLOW.md|AGENTS.md|CLAUDE.md|README.md|.claude/skills/WORKFLOW.md|.claude/skills/references/*)
         docs=1
         ;;
       *)
