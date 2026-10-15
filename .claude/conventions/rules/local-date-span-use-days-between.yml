@@ -1,0 +1,9 @@
+id: "local-date-span-use-days-between"
+tier: 1
+added: "2026-09-09"
+source: "https://github.com/apaleo/apaleo/pull/13084#discussion_r3933239102"
+statement: "Count whole calendar days between LocalDate values with Period.DaysBetween rather than Period.Between(..., PeriodUnits.Days).Days."
+violations: 0
+last_violation: null
+mechanical_rule: "local-date-span-use-days-between"
+worked_example: ".claude/conventions/examples/local-date-span-use-days-between.txt"

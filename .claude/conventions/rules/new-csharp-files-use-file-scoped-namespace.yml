@@ -1,0 +1,9 @@
+id: "new-csharp-files-use-file-scoped-namespace"
+tier: 1
+added: "2026-09-01"
+source: "https://github.com/apaleo/apaleo/pull/13069#discussion_r3904286122"
+statement: "New C# files must use a file-scoped namespace (namespace Name;) rather than a block namespace."
+violations: 0
+last_violation: null
+mechanical_rule: "new-csharp-files-use-file-scoped-namespace"
+worked_example: ".claude/conventions/examples/new-csharp-files-use-file-scoped-namespace.txt"

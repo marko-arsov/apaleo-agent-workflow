@@ -1,0 +1,16 @@
+rules:
+  - id: apaleo.application-csharp-use-check-not-null
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      Use Check.NotNull / Check.NotEmpty instead of ArgumentNullException.ThrowIfNull.
+      See application-csharp-use-check-not-null.
+    patterns:
+      - pattern: ArgumentNullException.ThrowIfNull(...)
+    paths:
+      include:
+        - apaleo/src/**/*.cs
+      exclude:
+        - apaleo/src/Clients/**/*.cs
+        - apaleo/**/*.Designer.cs
+        - apaleo/**/*.g.cs

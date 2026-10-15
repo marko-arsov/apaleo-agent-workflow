@@ -1,0 +1,36 @@
+Rule: development *-data-authz-spec.ts files cover filtered GET/list payloads; write-endpoint 403s belong in *-authz-spec.ts.
+
+Violating diff example:
+
+  development/src/tests/core/calendar/authz/calendar-events-data-authz-spec.ts
+
+  it('should not be able to split a calendar event shared with an inaccessible property', async () => {
+    const result = await putSplitCalendarEventAsUser({
+      id: multiPropertyEventId,
+      from: '2026-09-26',
+      to: '2026-09-26',
+      email: propertyAdminEmail,
+      accountCode
+    });
+    expect(result.response.statusCode).toBe(httpForbiddenStatusCode);
+  });
+
+Correct form:
+
+  development/src/tests/core/calendar/authz/calendar-events-authz-spec.ts
+
+  it('should not be able to split a calendar event when they cannot access every property in the union', async () => {
+    const result = await putSplitCalendarEventAsUser({...});
+    expect(result.response.statusCode).toBe(httpForbiddenStatusCode);
+  });
+
+  Keep calendar-events-data-authz-spec.ts to GET list / get-by-id / occurrences filtering.
+
+Expected Tier-2 artifacts:
+
+- PreToolUse/diff detector id: e2e-data-authz-is-filtered-get (advisory)
+- Patterns: calendarEventActionsById(Fork|Split)Put, putSplitCalendarEventAsUser, putOverrideOccurrenceAsUser, deleteCancelOccurrenceAsUser, it(...should not be able to split|fork|override|cancel)
+- Semgrep: apaleo.e2e-data-authz-is-filtered-get (WARNING)
+- Architecture-test: not applicable. This is E2E spec placement, not a C# dependency boundary.
+- False positives: remaining calendar fork/override/cancel describes in data-authz until moved; not tax-definition PATCH or afterAll cleanup deletes (those patterns are calendar-action-specific). Advisory only; does not block.
+- Result: WARNING in implementation/review evidence, exit 0

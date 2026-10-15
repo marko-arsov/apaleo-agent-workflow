@@ -1,0 +1,7 @@
+id: "archived-property-writes-use-interceptor"
+tier: 3
+added: "2026-09-01"
+source: "https://github.com/apaleo/apaleo/pull/13069"
+statement: "Writes that must fail on an archived property go through ArchivedPropertyReadOnlyInterceptor, including delete; extend the interceptor if the entity is not visible to it instead of adding an application-layer archived check."
+violations: 0
+last_violation: null

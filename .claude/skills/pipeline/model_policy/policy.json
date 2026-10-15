@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "test_file_threshold": 4,
+  "test_line_threshold": 300,
+  "max_fallbacks": 2,
+  "stale_days": 30
+}

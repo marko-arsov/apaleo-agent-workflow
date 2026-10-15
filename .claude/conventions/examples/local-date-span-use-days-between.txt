@@ -1,0 +1,23 @@
+Rule: Count whole calendar days between LocalDate values with Period.DaysBetween.
+
+Violating diff example:
+
+  apaleo/src/Apaleo.Api/Modules/Calendar/Validators/CalendarEventOccurrenceListRequestValidator.cs
+
+  var days = Period.Between(request.From, to, PeriodUnits.Days).Days;
+
+Correct form:
+
+  var days = Period.DaysBetween(request.From, to);
+
+Do not use (to - request.From).Days. NodaTime LocalDate subtraction returns a
+years/months/days Period, so .Days under-counts any range that crosses a month.
+
+Expected Tier-1 artifacts:
+
+- PreToolUse/diff detector id: local-date-span-use-days-between
+- Pattern: Period.Between(..., PeriodUnits.Days).Days
+- Semgrep: not applicable. Two brownfield call sites would false-positive on
+  whole-file scans. Diff/Write detection only sees added lines or newly written content.
+- Architecture-test: not applicable. This is API spelling, not a dependency boundary.
+- Blocking result: exit code 2 telling the agent to use Period.DaysBetween

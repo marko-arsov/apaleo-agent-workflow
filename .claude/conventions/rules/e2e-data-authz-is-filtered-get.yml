@@ -1,0 +1,10 @@
+id: "e2e-data-authz-is-filtered-get"
+tier: 2
+added: "2026-09-17"
+source: "https://github.com/apaleo/development/pull/6343#discussion_r4036291283"
+statement: "development *-data-authz-spec.ts files cover filtered GET/list payloads for callers who can hit the route; write-endpoint 403s belong in the matching *-authz-spec.ts."
+violations: 0
+last_violation: null
+mechanical_rule: "e2e-data-authz-is-filtered-get"
+worked_example: ".claude/conventions/examples/e2e-data-authz-is-filtered-get.txt"
+scoped_rule: ".claude/rules/development-e2e.md"

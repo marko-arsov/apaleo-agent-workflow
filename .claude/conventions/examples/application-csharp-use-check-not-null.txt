@@ -1,0 +1,25 @@
+Rule: Application C# uses Check.NotNull / Check.NotEmpty, not ArgumentNullException.
+
+Violating diff example:
+
+  apaleo/src/Apaleo.Core/Extensions/EntityResolver.cs
+
+  ArgumentNullException.ThrowIfNull(ids);
+  if (resolve == null)
+  {
+      throw new ArgumentNullException(nameof(resolve));
+  }
+
+Correct form:
+
+  Check.NotNull(ids);
+  Check.NotNull(resolve);
+
+Expected Tier-2 artifacts:
+
+- PreToolUse/diff detector id: application-csharp-use-check-not-null (advisory)
+- Patterns: ArgumentNullException.ThrowIfNull and throw new ArgumentNullException(
+- Semgrep: apaleo.application-csharp-use-check-not-null (WARNING, ThrowIfNull only)
+- Architecture-test: not applicable. This is call-site spelling, not a dependency boundary.
+- False positives: generated clients under src/Clients, brownfield `throw new ArgumentNullException` in converters, EntityIdGeneratorService.cs existing ThrowIfNull. Advisory only; does not block.
+- Result: WARNING in implementation/review evidence, exit 0

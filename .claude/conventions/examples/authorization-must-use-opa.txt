@@ -1,0 +1,19 @@
+Rule: Authorization policy belongs in OPA/Rego and the established OPA integration layer.
+
+Violating diff example:
+
+  apaleo/src/Apaleo.Api/Modules/Calendar/Authorization/CalendarEventAuthorizationService.cs
+
+  public sealed class CalendarEventAuthorizationHandler : IAuthorizationHandler
+  {
+      // Product authorization logic placed in C# instead of a .rego policy.
+  }
+
+Expected Tier-1 artifacts:
+
+- PreToolUse/diff detector id: authorization-must-use-opa
+- Allowed integration path: apaleo/src/Apaleo.Api/Infrastructure/Authorization/**/*.cs
+- Semgrep rule: apaleo.authorization-must-use-opa
+- Architecture-test proposal: `.claude/conventions/proposals/authorization-must-use-opa.architecture-test.patch`
+  (never applied by the workflow skill)
+- Blocking result: exit code 2 with guidance to references/identity.md

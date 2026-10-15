@@ -1,0 +1,7 @@
+id: "reuse-entity-lifecycle-service"
+tier: 3
+added: "2026-09-01"
+source: "https://github.com/apaleo/apaleo/pull/13069"
+statement: "When an aggregate already has a create or delete application service, persist that aggregate by calling that service rather than copying Insert, Delete, id generation, or entity mapping into a sibling service."
+violations: 0
+last_violation: null

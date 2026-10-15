@@ -1,0 +1,45 @@
+Rule: Prefer default core/decision when its axis is already correct. When several endpoints
+share a *non-default* OPA allow/deny, expose one named *_decision and point every
+[OpaAuthorization(decisionPath: ...)] at it.
+
+Violating diff example (rename wrapper):
+
+  apaleo/src/Apaleo.Api/Infrastructure/Authorization/core/policies/calendar/event/put-occurrence-override.rego
+
+  default allow_put_calendar_event_occurrence_override := false
+
+  allow_put_calendar_event_occurrence_override if {
+      is_interactive_user
+      mcp_gate_passed
+      calendar_event_action_interactive_user_has_access
+  }
+
+  decision_put_calendar_event_occurrence_override := {
+      "allow": allow_put_calendar_event_occurrence_override,
+      ...
+  }
+
+Violating diff example (restating default):
+
+  [OpaAuthorization(decisionPath: "core/calendar_event_write_decision")]
+  plus a *-write.rego that only `every`s `property_ids` (request ∪ resource) or adds an
+  empty-list guard. That is default `core/decision`. Omit the attribute.
+
+Correct form:
+
+  Omit `[OpaAuthorization]` when default write-every / read-some is the right axis
+  (calendar GET/POST/PUT/DELETE/split). One owner file (calendar-event-action.rego /
+  policy_bulk.rego) defines a helper and `*_decision` only when the axis differs.
+  Controllers then use [OpaAuthorization(decisionPath: "core/calendar_event_action_decision")].
+  Keep a per-endpoint .rego file only when the decision body actually differs (unique every/some checks).
+
+Expected Tier-1 artifacts:
+
+- PreToolUse/diff detector id: reuse-identical-opa-decision
+- Patterns: thin allow_* wrappers that only call *_has_access / *_has_request_properties
+- Allowed owner paths: *-action.rego, policy_bulk.rego (not *-write.rego; that restates default)
+- Semgrep: not applicable. Whole-file scans would flag the allowed owner files unless
+  every scan listed them as excludes; diff/Write detection plus allowed_paths is enough.
+- Architecture-test: not applicable. This is Rego file shape, not a C# type boundary.
+- Blocking result: exit code 2 telling the agent to omit decisionPath when default is
+  correct, or point OpaAuthorization at the shared non-default decision

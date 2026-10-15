@@ -1,0 +1,7 @@
+id: "db-migration-minimum-pr-split"
+tier: 3
+added: "2026-10-07"
+source: "manual (SL-145, https://github.com/apaleo/apaleo/pull/13255)"
+statement: "Schema PRs ship the migration with its entity and builder changes; drops are a separate PR after the code stops using the column; plans use the minimum PR count (2 add/drop, 3 replace/rename) and add dual-write or rollback-safety PRs only on explicit request."
+violations: 0
+last_violation: null

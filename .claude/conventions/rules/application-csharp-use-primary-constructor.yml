@@ -1,0 +1,10 @@
+id: "application-csharp-use-primary-constructor"
+tier: 2
+added: "2026-09-15"
+source: "https://github.com/apaleo/apaleo/pull/13132"
+statement: "AutoWire / DI C# types that only capture dependencies use a primary constructor with Check.NotNull field initializers, not a classic constructor body."
+violations: 0
+last_violation: null
+mechanical_rule: "application-csharp-use-primary-constructor"
+worked_example: ".claude/conventions/examples/application-csharp-use-primary-constructor.txt"
+scoped_rule: ".claude/rules/apaleo-csharp.md"

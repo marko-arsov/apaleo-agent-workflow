@@ -1,0 +1,19 @@
+rules:
+  - id: apaleo.e2e-data-authz-is-filtered-get
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      Write-endpoint 403s belong in *-authz-spec.ts.
+      *-data-authz-spec.ts covers filtered GET/list data.
+      See e2e-data-authz-is-filtered-get.
+    pattern-either:
+      - pattern: $X.calendarEventActionsByIdForkPut(...)
+      - pattern: $X.calendarEventActionsByIdSplitPut(...)
+      - pattern: putSplitCalendarEventAsUser(...)
+      - pattern: putOverrideOccurrenceAsUser(...)
+      - pattern: deleteCancelOccurrenceAsUser(...)
+    paths:
+      include:
+        - development/src/tests/**/*data-authz-spec.ts
+      exclude:
+        - development/src/tests/**/*data-authz-clients-spec.ts

@@ -1,0 +1,10 @@
+id: "reuse-identical-opa-decision"
+tier: 1
+added: "2026-09-14"
+source: "https://github.com/apaleo/apaleo/pull/13126#discussion_r3989573635"
+statement: "Prefer default core/decision when write-every on request ∪ resource (or read-some) is already the right axis. When several endpoints share a non-default allow/deny, expose one named *_decision and point every [OpaAuthorization(decisionPath: ...)] at it rather than adding per-endpoint allow_*/decision_* files that only rename a shared helper."
+violations: 2
+last_violation: "2026-09-09"
+scoped_rule: ".claude/rules/authorization.md"
+mechanical_rule: "reuse-identical-opa-decision"
+worked_example: ".claude/conventions/examples/reuse-identical-opa-decision.txt"

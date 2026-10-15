@@ -1,0 +1,377 @@
+[
+  {
+    "provider": "codex",
+    "model": "gpt-6-luna",
+    "family": "luna",
+    "band": "fast",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://learn.chatgpt.com/docs/model-selection"
+    ],
+    "efforts": {
+      "simple": "low",
+      "balanced": "medium",
+      "demanding": "high"
+    },
+    "assessment": "Initial qualitative routing band; vendor guidance, not a measured cross-model benchmark."
+  },
+  {
+    "provider": "codex",
+    "model": "gpt-6.1-sol",
+    "family": "sol",
+    "band": "strong",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://learn.chatgpt.com/docs/model-selection"
+    ],
+    "efforts": {
+      "simple": "low",
+      "balanced": "medium",
+      "demanding": "high"
+    },
+    "assessment": "Initial qualitative routing band; vendor guidance, not a measured cross-model benchmark."
+  },
+  {
+    "provider": "codex",
+    "model": "gpt-6-astra",
+    "family": "astra",
+    "band": "deep",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://learn.chatgpt.com/docs/model-selection"
+    ],
+    "efforts": {
+      "simple": "low",
+      "balanced": "medium",
+      "demanding": "high"
+    },
+    "assessment": "Initial qualitative routing band; vendor guidance, not a measured cross-model benchmark."
+  },
+  {
+    "provider": "claude",
+    "model": "haiku",
+    "family": "claude-haiku",
+    "band": "fast",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config"
+    ],
+    "efforts": {
+      "simple": "low",
+      "balanced": "medium",
+      "demanding": "high"
+    },
+    "assessment": "Initial qualitative routing band; vendor guidance, not a measured cross-model benchmark."
+  },
+  {
+    "provider": "claude",
+    "model": "sonnet",
+    "family": "claude-sonnet",
+    "band": "strong",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config"
+    ],
+    "efforts": {
+      "simple": "low",
+      "balanced": "medium",
+      "demanding": "high"
+    },
+    "assessment": "Initial qualitative routing band; vendor guidance, not a measured cross-model benchmark."
+  },
+  {
+    "provider": "claude",
+    "model": "opus",
+    "family": "claude-opus",
+    "band": "deep",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config"
+    ],
+    "efforts": {
+      "simple": "low",
+      "balanced": "medium",
+      "demanding": "high"
+    },
+    "assessment": "Initial qualitative routing band; vendor guidance, not a measured cross-model benchmark."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-haiku-5-5-thinking-low",
+    "family": "claude-haiku",
+    "band": "fast",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "low",
+    "modes": [
+      "simple"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-haiku-5-5-thinking-medium",
+    "family": "claude-haiku",
+    "band": "fast",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "medium",
+    "modes": [
+      "balanced"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-haiku-5-5-thinking-high",
+    "family": "claude-haiku",
+    "band": "fast",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "high",
+    "modes": [
+      "demanding"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-sonnet-5-5-low",
+    "family": "claude-sonnet",
+    "band": "strong",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "low",
+    "modes": [
+      "simple"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-sonnet-5-5-medium",
+    "family": "claude-sonnet",
+    "band": "strong",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "medium",
+    "modes": [
+      "balanced"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-sonnet-5-5-high",
+    "family": "claude-sonnet",
+    "band": "strong",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "high",
+    "modes": [
+      "demanding"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-opus-5-5-low",
+    "family": "claude-opus",
+    "band": "deep",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "low",
+    "modes": [
+      "simple"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-opus-5-5-medium",
+    "family": "claude-opus",
+    "band": "deep",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "medium",
+    "modes": [
+      "balanced"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  },
+  {
+    "provider": "cursor",
+    "model": "claude-opus-5-5-high",
+    "family": "claude-opus",
+    "band": "deep",
+    "rank": 10,
+    "stages": [
+      "specify",
+      "implement-tests",
+      "implement",
+      "review",
+      "address-pr-comments"
+    ],
+    "confidence": "reviewed",
+    "reviewed_at": "2026-10-14",
+    "sources": [
+      "https://code.claude.com/docs/en/model-config",
+      "https://cursor.com/docs/cli/reference/parameters"
+    ],
+    "encoded_effort": "high",
+    "modes": [
+      "demanding"
+    ],
+    "assessment": "Vendor effort guidance mapped to exact advertised Cursor ID; access still checked by host."
+  }
+]

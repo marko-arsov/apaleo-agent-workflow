@@ -1,0 +1,8 @@
+id: "application-service-command-record"
+tier: 3
+added: "2026-09-14"
+source: "https://github.com/apaleo/apaleo/pull/13126#discussion_r3989773477"
+statement: "Application-service methods whose arguments are a resource id plus more than one additional primitive, and that have no body DTO, take a named command or query record; HTTP *Request/query models stay at the controller and are mapped there."
+violations: 0
+last_violation: null
+scoped_rule: ".claude/rules/apaleo-csharp.md"

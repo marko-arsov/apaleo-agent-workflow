@@ -1,0 +1,7 @@
+id: "db-migration-production-apply"
+tier: 3
+added: "2026-10-14"
+source: "https://app.notion.com/p/apaleo/How-to-deploy-to-production-51bd31c54da746ccbc47ee02f665aa12 ; https://app.notion.com/p/apaleo/How-to-perform-time-consuming-data-migrations-in-production-9cf9eb99b11e452d83bcc181cc926a8a ; Slack Davide Lettieri on apaleo#12938 ; /migration-script 2026-10-14"
+statement: "Migration PRs include flattened SQL for review; production is applied manually before deploy only when the change can exceed the 30-second startup timeout or lock a hot table, with that recommendation and its reason in the plan and PR; the executed production file is generated after merge by /migration-script from parked master; staging always applies at startup."
+violations: 0
+last_violation: null

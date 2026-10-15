@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "exemptions": [
+    {
+      "rule": "new-csharp-files-use-file-scoped-namespace",
+      "path": "apaleo/src/Apaleo.Api/Modules/Booking/Services/Group/IPickUpReservationsConverter.cs",
+      "reason": "Existing brownfield file; a small edit versus origin/master is not a new file. Do not convert in SL-30."
+    }
+  ]
+}

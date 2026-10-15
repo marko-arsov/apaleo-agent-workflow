@@ -1,0 +1,37 @@
+Rule: AutoWire / DI C# types that only capture dependencies use a primary constructor
+with Check.NotNull field initializers.
+
+Violating diff example (classic constructor body, pre-cleanup SplitCalendarEventService):
+
+  apaleo/src/Apaleo.Calendar/Services/SplitCalendarEventService.cs
+
+  internal class SplitCalendarEventService : ISplitCalendarEventService
+  {
+      private readonly ICalendarEventRepository _repository;
+
+      public SplitCalendarEventService(ICalendarEventRepository repository)
+      {
+          _repository = Check.NotNull(repository);
+      }
+  }
+
+Correct form (CalendarEventOccurrenceSuppressionResolver / post-cleanup split service):
+
+  internal class SplitCalendarEventService(
+      ICalendarEventRepository repository)
+      : ISplitCalendarEventService
+  {
+      private readonly ICalendarEventRepository _repository = Check.NotNull(repository);
+  }
+
+Expected Tier-2 artifacts:
+
+- PreToolUse/diff detector id: application-csharp-use-primary-constructor (advisory)
+- Pattern: classic ctor body assigning Check.NotNull / Check.NotEmpty
+- Semgrep: apaleo.application-csharp-use-primary-constructor (WARNING)
+- Architecture-test: not applicable. This is constructor spelling, not a dependency boundary.
+- False positives: constructors with extra body logic, `: base(...)`, multiple overloads,
+  brownfield services whose classic constructor lines are newly added in a large rewrite.
+  Advisory only; does not block. Unchanged brownfield constructors are not in the added-line
+  diff and are not flagged.
+- Result: WARNING in implementation/review evidence, exit 0

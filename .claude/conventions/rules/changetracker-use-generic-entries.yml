@@ -1,0 +1,7 @@
+id: "changetracker-use-generic-entries"
+tier: 3
+added: "2026-09-01"
+source: "https://github.com/apaleo/apaleo/pull/13069#discussion_r3904292596"
+statement: "When collecting ChangeTracker entries of a known entity type or interface, use Entries<T>() rather than untyped Entries() plus a runtime type check."
+violations: 0
+last_violation: null

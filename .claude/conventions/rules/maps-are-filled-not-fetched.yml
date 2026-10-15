@@ -1,0 +1,7 @@
+id: "maps-are-filled-not-fetched"
+tier: 3
+added: "2026-09-09"
+source: "https://github.com/apaleo/apaleo/pull/13084#discussion_r3933222688"
+statement: "A response creator owns one response shape. An in-memory index, scope, or grouping type is constructed from values the calling application service already loaded and does not take services to load itself."
+violations: 0
+last_violation: null

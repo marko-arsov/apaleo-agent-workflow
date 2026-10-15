@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "authorization-must-use-opa",
+      "description": "Authorization policy belongs in OPA/Rego and the established OPA integration layer, not arbitrary C# policy or service classes.",
+      "severity": "block",
+      "file_globs": [
+        "apaleo/**/*.cs"
+      ],
+      "allowed_paths": [
+        "apaleo/src/Apaleo.Api/Infrastructure/Authorization/**/*.cs"
+      ],
+      "allowed_namespaces": [
+        "Apaleo.Api.Infrastructure.Authorization"
+      ],
+      "patterns": [
+        "\\bclass\\s+\\w*(?:Authorization|Permission|Access)\\w*Policy\\b",
+        ":\\s*(?:IAuthorizationHandler|IAuthorizationRequirement|AuthorizationHandler\\s*<)",
+        "\\b(?:AuthorizationPolicyBuilder|AddPolicy\\s*\\()"
+      ],
+        "message": "Authorization policy must be implemented in Infrastructure/Authorization OPA .rego/data.json artifacts. Read references/identity.md. Use an exact, justified allowlist entry only for an approved integration exception."
+    },
+    {
+      "id": "new-csharp-files-use-file-scoped-namespace",
+      "description": "New C# files must use a file-scoped namespace rather than a block namespace.",
+      "severity": "block",
+      "file_globs": [
+        "apaleo/**/*.cs"
+      ],
+      "allowed_paths": [
+        "apaleo/**/*.Designer.cs",
+        "apaleo/**/*.g.cs"
+      ],
+      "patterns": [
+        "^\\s*namespace\\s+[A-Za-z_][\\w.]*(?:\\s*\\{|\\s*)$"
+      ],
+      "message": "New C# files must use a file-scoped namespace (`namespace Name;`). Do not introduce a block `namespace Name { }`. Existing brownfield files may keep block namespaces until they are converted."
+    },
+    {
+      "id": "local-date-span-use-days-between",
+      "description": "Count whole calendar days between LocalDate values with Period.DaysBetween.",
+      "severity": "block",
+      "file_globs": [
+        "apaleo/**/*.cs"
+      ],
+      "allowed_paths": [
+        "apaleo/**/*.Designer.cs",
+        "apaleo/**/*.g.cs"
+      ],
+      "patterns": [
+        "Period\\.Between\\s*\\([^;]*PeriodUnits\\.Days\\)\\s*\\.Days"
+      ],
+      "message": "Count LocalDate spans with Period.DaysBetween(from, to). Do not copy Period.Between(..., PeriodUnits.Days).Days. Do not use (end - start).Days on LocalDate: that Period is years/months/days, so .Days is the leftover, not the span."
+    },
+    {
+      "id": "application-csharp-use-check-not-null",
+      "description": "Application C# uses Check.NotNull / Check.NotEmpty rather than ArgumentNullException.",
+      "severity": "advisory",
+      "file_globs": [
+        "apaleo/**/*.cs"
+      ],
+      "allowed_paths": [
+        "apaleo/test/**/*.cs",
+        "apaleo/src/Clients/**/*.cs",
+        "apaleo/**/*.Designer.cs",
+        "apaleo/**/*.g.cs"
+      ],
+      "patterns": [
+        "ArgumentNullException\\.ThrowIfNull",
+        "throw\\s+new\\s+ArgumentNullException\\s*\\("
+      ],
+      "message": "Use Check.NotNull / Check.NotEmpty instead of ArgumentNullException.ThrowIfNull or throw new ArgumentNullException. Generated clients and tests may keep BCL throws. Advisory only."
+    },
+    {
+      "id": "application-csharp-use-primary-constructor",
+      "description": "AutoWire / DI types that only capture dependencies use a primary constructor with Check.NotNull field initializers.",
+      "severity": "advisory",
+      "file_globs": [
+        "apaleo/**/*.cs"
+      ],
+      "allowed_paths": [
+        "apaleo/test/**/*.cs",
+        "apaleo/src/Clients/**/*.cs",
+        "apaleo/**/*.Designer.cs",
+        "apaleo/**/*.g.cs"
+      ],
+      "patterns": [
+        "(?:public|internal|private|protected)\\s+(?!class\\b)(?!async\\b)(?!static\\b)(?!override\\b)(?!virtual\\b)(?!new\\b)\\w+\\s*\\([^;]{0,1500}?\\)\\s*\\{[^}]{0,2500}?=\\s*Check\\.Not(?:Null|Empty)"
+      ],
+      "message": "Capture dependencies with a primary constructor and Check.NotNull field initializers, not a classic constructor body. Extra constructor logic, base(...), and multiple overloads may keep a classic constructor. Advisory only."
+    },
+    {
+      "id": "reuse-identical-opa-decision",
+      "description": "Prefer default core/decision when its axis is already correct. Shared non-default allow/deny belongs in one named *_decision, not per-endpoint rename wrappers.",
+      "severity": "block",
+      "file_globs": [
+        "apaleo/**/Infrastructure/Authorization/**/policies/**/*.rego"
+      ],
+      "allowed_paths": [
+        "apaleo/**/policies/policy_bulk.rego",
+        "apaleo/**/policies/**/*-action.rego"
+      ],
+      "patterns": [
+        "allow_\\w+\\s+if\\s*\\{\\s*is_interactive_user\\s+mcp_gate_passed\\s+[a-z_]+_has_access\\s*\\}",
+        "allow_\\w+\\s+if\\s*\\{\\s*mcp_gate_passed\\s+has_account_level_permissions\\s+[a-z_]+_has_request_properties\\s*\\}"
+      ],
+      "message": "Prefer default core/decision when write-every on request ∪ resource (or read-some) is already the right axis; omit [OpaAuthorization]. Do not add a *-write.rego or per-endpoint allow_*/decision_* file that only restates default or renames a shared helper. Point remaining custom paths at one named *_decision (core/calendar_event_action_decision, core/property_bulk_decision). Keep a file per endpoint only when the decision body actually differs. Owner files are named *-action.rego or policy_bulk.rego."
+    },
+    {
+      "id": "e2e-data-authz-is-filtered-get",
+      "description": "data-authz specs cover filtered GET/list payloads; write 403s belong in *-authz-spec.ts.",
+      "severity": "advisory",
+      "file_globs": [
+        "development/src/tests/**/*data-authz-spec.ts"
+      ],
+      "allowed_paths": [
+        "development/src/tests/**/*data-authz-clients-spec.ts"
+      ],
+      "patterns": [
+        "calendarEventActionsById(?:Fork|Split)Put",
+        "putSplitCalendarEventAsUser",
+        "putOverrideOccurrenceAsUser",
+        "deleteCancelOccurrenceAsUser",
+        "it\\([^)]*should not be able to (?:split|fork|override|cancel)\\b"
+      ],
+      "message": "Write-endpoint 403s belong in *-authz-spec.ts. *-data-authz-spec.ts covers filtered GET/list data. Advisory only."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+rules:
+  - id: apaleo.authorization-must-use-opa
+    languages: [csharp]
+    severity: ERROR
+    message: Authorization policy belongs in the OPA integration layer; see references/identity.md.
+    patterns:
+      - pattern-regex: '(?s)(class\s+\w*(?:Authorization|Permission|Access)\w*Policy\b|:\s*(?:IAuthorizationHandler|IAuthorizationRequirement|AuthorizationHandler\s*<)|\b(?:AuthorizationPolicyBuilder|AddPolicy\s*\())'
+    paths:
+      include:
+        - apaleo/**/*.cs
+      exclude:
+        - apaleo/src/Apaleo.Api/Infrastructure/Authorization/**/*.cs

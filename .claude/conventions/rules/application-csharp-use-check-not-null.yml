@@ -1,0 +1,10 @@
+id: "application-csharp-use-check-not-null"
+tier: 2
+added: "2026-09-14"
+source: "https://github.com/apaleo/apaleo/pull/12887#discussion_r3773704278"
+statement: "Application C# uses Check.NotNull / Check.NotEmpty rather than ArgumentNullException.ThrowIfNull or throw new ArgumentNullException."
+violations: 0
+last_violation: null
+mechanical_rule: "application-csharp-use-check-not-null"
+worked_example: ".claude/conventions/examples/application-csharp-use-check-not-null.txt"
+scoped_rule: ".claude/rules/apaleo-csharp.md"

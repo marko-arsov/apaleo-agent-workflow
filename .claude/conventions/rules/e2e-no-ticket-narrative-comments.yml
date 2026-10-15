@@ -1,0 +1,8 @@
+id: "e2e-no-ticket-narrative-comments"
+tier: 3
+added: "2026-09-17"
+source: "https://github.com/apaleo/development/pull/6343#discussion_r4036188304"
+statement: "Do not add ticket-id, AC-id, or implementation-journal comments in development E2E specs; the it() title and code carry the why."
+violations: 0
+last_violation: null
+scoped_rule: ".claude/rules/development-e2e.md"

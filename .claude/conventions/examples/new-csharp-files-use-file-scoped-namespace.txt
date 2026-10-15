@@ -1,0 +1,34 @@
+Rule: New C# files must use a file-scoped namespace.
+
+Violating diff example:
+
+  apaleo/src/Apaleo.Data/Entities/IHasPropertyIds.cs
+
+  namespace Apaleo.Data.Entities
+  {
+      public interface IHasPropertyIds
+      {
+          long[] PropertyIds { get; }
+      }
+  }
+
+Correct form:
+
+  namespace Apaleo.Data.Entities;
+
+  public interface IHasPropertyIds
+  {
+      long[] PropertyIds { get; }
+  }
+
+Expected Tier-1 artifacts:
+
+- PreToolUse/diff detector id: new-csharp-files-use-file-scoped-namespace
+- Pattern: a `namespace Name` line that is not file-scoped (`namespace Name;`)
+- Semgrep: not applicable. Semgrep scans whole changed files, so every brownfield edit
+  in a block-namespace file would false-positive. Diff/Write detection only sees added
+  lines or newly written content.
+- Architecture-test: not applicable. This is syntax, not a dependency boundary.
+  Product-repo IDE0161 already exists as a suggestion/warning; raising it to error
+  would flag the existing codebase and is a separately approved repository change.
+- Blocking result: exit code 2 telling the agent to use `namespace Name;`

@@ -1,0 +1,59 @@
+Proposal only — do not apply without a separately approved application-repository change.
+
+This uses the existing xUnit project and reflection instead of adding a NetArchTest dependency.
+It runs in the existing `dotnet test Apaleo.sln` command.
+
+diff --git a/test/Apaleo.Api.Tests/Architecture/AuthorizationArchitectureTest.cs b/test/Apaleo.Api.Tests/Architecture/AuthorizationArchitectureTest.cs
+new file mode 100644
+index 000000000..111111111
+--- /dev/null
++++ b/test/Apaleo.Api.Tests/Architecture/AuthorizationArchitectureTest.cs
+@@ -0,0 +1,41 @@
++using System;
++using System.Linq;
++using Apaleo.Api;
++using Microsoft.AspNetCore.Authorization;
++using Xunit;
++
++namespace Apaleo.Api.Tests.Architecture;
++
++public sealed class AuthorizationArchitectureTest
++{
++    private const string OpaNamespace = "Apaleo.Api.Infrastructure.Authorization";
++
++    [Fact]
++    public void AuthorizationPolicyTypesMustLiveInOpaLayer()
++    {
++        var offenders = typeof(Startup).Assembly.DefinedTypes
++            .Where(IsAuthorizationPolicyType)
++            .Where(type => type.Namespace is null || (
++                type.Namespace != OpaNamespace
++                && !type.Namespace.StartsWith(OpaNamespace + ".", StringComparison.Ordinal)))
++            .Select(type => type.FullName)
++            .OrderBy(name => name)
++            .ToArray();
++
++        Assert.True(
++            offenders.Length == 0,
++            "Authorization policy belongs in the OPA integration layer: "
++            + string.Join(", ", offenders));
++    }
++
++    private static bool IsAuthorizationPolicyType(Type type) =>
++        typeof(IAuthorizationHandler).IsAssignableFrom(type)
++        || typeof(IAuthorizationRequirement).IsAssignableFrom(type)
++        || DerivesFromOpenGeneric(type, typeof(AuthorizationHandler<>));
++
++    private static bool DerivesFromOpenGeneric(Type type, Type openGeneric)
++    {
++        for (var current = type.BaseType; current is not null; current = current.BaseType)
++        {
++            if (current.IsGenericType && current.GetGenericTypeDefinition() == openGeneric)
++            {
++                return true;
++            }
++        }
++
++        return false;
++    }
++}

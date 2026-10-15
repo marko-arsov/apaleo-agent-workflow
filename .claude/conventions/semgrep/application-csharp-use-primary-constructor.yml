@@ -1,0 +1,17 @@
+rules:
+  - id: apaleo.application-csharp-use-primary-constructor
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      Capture dependencies with a primary constructor and Check.NotNull field
+      initializers, not a classic constructor body. See
+      application-csharp-use-primary-constructor.
+    patterns:
+      - pattern-regex: '(?:public|internal|private|protected)\s+(?!class\b)(?!async\b)(?!static\b)(?!override\b)(?!virtual\b)(?!new\b)\w+\s*\([^;]{0,1500}?\)\s*\{[^}]{0,2500}?=\s*Check\.Not(?:Null|Empty)'
+    paths:
+      include:
+        - apaleo/src/**/*.cs
+      exclude:
+        - apaleo/src/Clients/**/*.cs
+        - apaleo/**/*.Designer.cs
+        - apaleo/**/*.g.cs

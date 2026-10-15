@@ -1,0 +1,9 @@
+id: "authorization-must-use-opa"
+tier: 1
+added: "2026-08-31"
+source: "manual"
+statement: "Authorization policy must be expressed in OPA/Rego and the established OPA integration layer, not arbitrary .NET policy or service classes."
+violations: 0
+last_violation: null
+mechanical_rule: "authorization-must-use-opa"
+worked_example: ".claude/conventions/examples/authorization-must-use-opa.txt"
