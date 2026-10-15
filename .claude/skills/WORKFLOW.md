@@ -206,7 +206,9 @@ After a draft PR, use `/address-pr-comments`, `/diagnose-ci`, manual `/test-and-
 explicit authorization.
 
 When a merged migration should be applied on production by hand, `/migration-script`
-generates that SQL from the parked master checkout. It does not apply the script.
+generates that SQL from the parked master checkout with the production runbook command
+(`dotnet ef migrations script <last-applied> --output Migration.sql`, no `-i`), then
+`SET statement_timeout = 0;` at the top. It does not apply the script.
 
 `/test-on-staging` is execution-first: it resolves the merged change, exhausts available deployment
 evidence, and runs read-only plus tightly bounded disposable-account browser/API/SQL smoke checks
@@ -253,6 +255,17 @@ No item adds a recurring model call.
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-10-15: `/migration-script` now follows the production runbook. It runs
+  `dotnet ef migrations script <last-applied> --output Migration.sql` with no `-i`
+  and no end id, then writes `SET statement_timeout = 0;` as the first line
+  without a byte-order mark. `task ef:migration-script` stays the `-i` source
+  for the flattened PR review copy.
+
+- 2026-10-15: Added `/publish-workflow`. It commits uncommitted workflow files on a new
+  branch from `origin/master`, pushes, and opens a pull request. A missing summary
+  is derived from the changed files. It does not run by itself, and it refuses
+  product repositories, plans, worktrees, and secrets.
 
 - 2026-10-15: Published the workflow as the private checkout
   `marko-arsov/apaleo-agent-workflow`. That checkout is the workspace parent.

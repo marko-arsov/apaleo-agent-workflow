@@ -68,7 +68,7 @@ That means “skip this whole migration if it is already in history,” not “c
 3. Script remains safe to re-run (native `IF NOT EXISTS` / `WHERE NOT EXISTS`).
 4. Save the flattened script under `ai-plans/<branch>/migration.sql` and paste that into the PR body — not the raw `-i` dump.
 
-`task ef:migration-script` is the **source of truth for DDL**. Flatten that output for the PR. After merge, `/migration-script` writes the raw script, with `SET statement_timeout = 0;` prepended, as the file someone runs on production.
+`task ef:migration-script` is the **source of truth for DDL** when flattening the PR review copy. It passes `-i`. The production file does not: `/migration-script` follows the runbook and runs `dotnet ef migrations script <last-applied> --output Migration.sql` with no `-i`.
 
 ## Production apply
 
@@ -89,7 +89,7 @@ When the recommendation is manual, generate the file that is executed after the 
 /migration-script <issue, PR, or branch>
 ```
 
-The skill fast-forwards the parked `apaleo` master checkout and runs `task ef:migration-script -- <previous> <this migration>` (or the same `dotnet ef migrations script -i` command when `task` is not installed). `<previous>` is the migration immediately before this one on master: Notion's last-applied id, and the start boundary. Its SQL is not in the file. The task writes `$ROOT/apaleo/migration.sql` (gitignored) with `-i`, and the skill prepends `SET statement_timeout = 0;`. Send that file to the person who will run it on production before the deploy. The skill does not execute SQL, commit, or push. It assumes production is already on `<previous>`. Pass `--from <MigrationId>` when production is behind that id.
+The skill fast-forwards the parked `apaleo` master checkout and runs `dotnet ef migrations script <previous> --output Migration.sql`, plus the project and startup-project flags this repo needs. It does not pass `-i` or an end id, so the file contains every migration after `<previous>` through current `master`. `<previous>` is the migration immediately before this PR's first new migration: the runbook's last-applied id, and the start boundary. Its SQL is not in the file. The skill writes `$ROOT/apaleo/Migration.sql` (gitignored; same path as `migration.sql` on a case-insensitive disk) and puts `SET statement_timeout = 0;` on the first line, without a byte-order mark. Send that file to the person who will run it once on production before the deploy. A second run fails. A failed run rolls back with the transaction. The skill does not execute SQL, commit, or push. It assumes production is already on `<previous>`. Pass `--from <MigrationId>` when production is behind that id. If `--from` is already applied in production, the non-idempotent script errors on that migration.
 
 The migration stays in the repository so dev, CI, and staging still apply it at startup. The history row keeps production startup from applying it again.
 
@@ -142,7 +142,8 @@ One-off **data** fixes (`feat: add business migration…`, account-scoped SQL in
 cd $WT/apaleo   # feature worktree
 task ef:add-migration -- <Name>
 task ef:update-database
-task ef:migration-script -- <From> <To>   # raw -i dump; flatten for the PR. /migration-script runs this on parked master after merge
+task ef:migration-script -- <From> <To>   # raw -i dump; flatten for the PR only
+# production file, after merge: /migration-script <issue|pr|branch>
 ```
 
 See `apaleo/README.md` / `Taskfile.yml`.
