@@ -9,4 +9,4 @@ force-default-model: true
 
 Follow `$ROOT/.claude/skills/migration-script/SKILL.md` and `$ROOT/.claude/skills/references/db-migrations.md`.
 
-Run the script. Do not apply the SQL, commit `migration.sql`, or push. Parked `apaleo` stays on `master`.
+Run the script. Do not apply the SQL, commit `Migration.sql`, or push. Parked `apaleo` stays on `master`.

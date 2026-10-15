@@ -139,6 +139,8 @@ if [[ -n "$FROM_OVERRIDE" ]]; then
   from_id="$FROM_OVERRIDE"
 fi
 
+# The production runbook scripts every migration after the last applied one through
+# current master. It does not take an end id and it does not pass -i.
 expected=()
 collect=0
 for id in "${all_ids[@]}"; do
@@ -148,32 +150,48 @@ for id in "${all_ids[@]}"; do
   fi
   if [[ "$collect" == "1" ]]; then
     expected+=("$id")
-    [[ "$id" == "$last" ]] && break
   fi
 done
-[[ ${#expected[@]} -gt 0 ]] || die_ask "no migrations to script from $from_id to $last"
+[[ ${#expected[@]} -gt 0 ]] || die_ask "no migrations to script after $from_id"
+tip="${expected[$(( ${#expected[@]} - 1 ))]}"
 
+out="$APALEO/Migration.sql"
 if ! (
   cd "$APALEO"
-  if command -v task >/dev/null 2>&1; then
-    task ef:migration-script -- "$from_id" "$last"
-  else
-    if ! dotnet ef --version >/dev/null 2>&1; then
-      dotnet tool restore
-    fi
-    dotnet ef migrations script \
-      --project src/Apaleo.Data/ \
-      --startup-project src/Apaleo.Data/ \
-      -o ./migration.sql \
-      -i \
-      "$from_id" "$last"
+  if ! dotnet ef --version >/dev/null 2>&1; then
+    dotnet tool restore
   fi
+  dotnet ef migrations script \
+    --project src/Apaleo.Data/ \
+    --startup-project src/Apaleo.Data/ \
+    --output ./Migration.sql \
+    "$from_id"
 ) >&2; then
-  die_ask "could not generate the EF script for $from_id..$last"
+  die_ask "could not generate the EF script after $from_id"
 fi
 
-out="$APALEO/migration.sql"
-[[ -s "$out" ]] || die_ask "task ef:migration-script wrote no $out"
+[[ -s "$out" ]] || die_ask "dotnet ef migrations script wrote no $out"
+python3 - "$out" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+data = path.read_bytes()
+if data.startswith(b"\xef\xbb\xbf"):
+    data = data[3:]
+text = data.decode("utf-8").lstrip("\ufeff")
+prefix = "SET statement_timeout = 0;\n\n"
+if not text.startswith("SET statement_timeout = 0;"):
+    text = prefix + text
+path.write_bytes(text.encode("utf-8"))
+PY
+
+if grep -q 'DO $EF$' "$out"; then
+  rm -f "$out"
+  die_ask "generated script used idempotent DO blocks; the production runbook does not — removed $out"
+fi
+if ! head -n 1 "$out" | grep -q '^SET statement_timeout = 0;$'; then
+  rm -f "$out"
+  die_ask "generated script is missing SET statement_timeout = 0; at the top — removed $out"
+fi
 
 found=()
 while IFS= read -r id; do
@@ -183,30 +201,27 @@ done < <(grep -oE '[0-9]{14}_[A-Za-z0-9]+' "$out" | sort -u)
 
 if [[ ${#found[@]} -ne ${#expected[@]} ]]; then
   rm -f "$out"
-  die_ask "generated script migration ids do not match $from_id..$last — removed $out"
+  die_ask "generated script migration ids do not match migrations after $from_id — removed $out"
 fi
 i=0
 while [[ "$i" -lt ${#expected[@]} ]]; do
   if [[ "${found[$i]}" != "${expected[$i]}" ]]; then
     rm -f "$out"
-    die_ask "generated script migration ids do not match $from_id..$last — removed $out"
+    die_ask "generated script migration ids do not match migrations after $from_id — removed $out"
   fi
   i=$((i + 1))
 done
 
-if ! head -n 1 "$out" | grep -q 'statement_timeout'; then
-  tmp="$(mktemp)"
-  printf '%s\n\n' 'SET statement_timeout = 0;' | cat - "$out" > "$tmp"
-  mv "$tmp" "$out"
-fi
-
 echo "apaleo: generated $out"
 echo "pr: $url"
 echo "from: $from_id"
-echo "to: $last"
+echo "through: $tip"
 echo "migrations: ${#expected[@]}"
+if [[ "$tip" != "$last" ]]; then
+  echo "note: master has migrations after this PR; the runbook includes every migration after $from_id through $tip"
+fi
 if [[ -n "$FROM_OVERRIDE" && "$from_id" != "$previous" ]]; then
-  echo "note: --from is behind the immediate predecessor $previous, so the file includes every migration after $from_id through $last"
+  echo "note: --from is behind the immediate predecessor $previous, so the file includes every migration after $from_id through $tip"
 fi
 echo "assumption: production is already on $from_id. That id is the start boundary; its SQL is not in the file. Pass --from <MigrationId> when production is behind it."
-echo "next: send the file to the person who will run it on production before the deploy. This skill did not apply it."
+echo "next: send the file to the person who will run it once on production before the deploy. A second run fails because this script is not idempotent. This skill did not apply it."
