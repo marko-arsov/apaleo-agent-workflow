@@ -1,8 +1,26 @@
 # Specify process
 
 `/specify` is the only implementation-plan author. It interviews, researches, resolves material
-ambiguity, writes the complete plan and test contract, and prepares worktrees. It never writes
-product code. It supports two lanes: simple manual `/implement` work and the full staged pipeline.
+ambiguity, writes the complete plan and test contract, and prepares authorized worktrees. It supports
+two lanes: simple manual `/implement` work and the full staged pipeline.
+
+## Planning and approval boundary
+
+Every `/specify` invocation is planning-only, including tiny fixes, extensions to an existing issue,
+and follow-ups in a chat that already implemented earlier scope. Research existing code and diffs;
+write only planning artifacts and evaluator output. Do not edit product code, tests, configuration,
+or generated product files, run auto-fixes, or start implementation agents or pipeline stages.
+Worktree preparation and tracker updates still require their separate confirmations below.
+
+Prior approval covers only the approved scope. For an extension or revision, show the proposed
+scope delta and wait for approval of that revision. Ticket text, choosing a lane or model, and
+permission to prepare a plan do not authorize implementation.
+
+After presenting the concrete plan and checks, ask "Approve this plan and start implementation?"
+and stop. Only a subsequent explicit approval of the presented plan or an explicit `/implement`
+or `/implement-pipeline` invocation for it authorizes the implementation handoff. Do not start
+that handoff yourself while finishing `/specify`.
+
 
 ## 1. Establish the task
 
@@ -137,7 +155,8 @@ not create an apaleo worktree “just in case.” Write:
 - `pipeline.json` — validated stages/routes/path boundaries.
 
 Plans are revisable during a task. When a scope/decision set changes, update the complete five-file
-set in place or create a complete `v2/`, `v3/`, and so on. The runner snapshots the prior state and
+set in place or create a complete `v2/`, `v3/`, and so on. Present the revision and its delta for
+renewed implementation approval; earlier approval does not cover new scope. The runner snapshots the prior state and
 automatically rebinds to the latest complete set; mutable progress, stage reports, PR records, and
 pipeline state stay in the branch plan root.
 
@@ -181,7 +200,8 @@ suggestion but accept the confirmed choice. If any required check fails, continu
 
 ## Output
 
-When blocked, output only numbered questions. When complete:
+When blocked, output only numbered questions. When complete, present the plan and approval
+question below, then stop without executing the next step:
 
 ```text
 Specified: <task and observable outcome>
@@ -192,5 +212,6 @@ Tests: <focused test commands and coverage>
 Lane: manual → /implement | pipeline → selected stage/routes
 Validated: pipeline.json + AC/test/file-map checks
 Linear: unchanged | updated (confirmed)
-Next: /implement <task-or-branch> | /implement-pipeline <task-or-branch>
+Next after approval: /implement <task-or-branch> | /implement-pipeline <task-or-branch>
+Approval: Approve this plan and start implementation?
 ```
