@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from common import FEATURE_REPOS, find_root
+from common import FEATURE_REPOS, attached_repo_names, find_root, repos_from_manifest
 from pipeline_manifest import (
     DEFAULT_BASE_BRANCH,
     find_plan_dir,
@@ -76,7 +76,7 @@ def _run(argv: list[str], cwd: Path, timeout: int = 60) -> subprocess.CompletedP
 
 def worktrees(root: Path, branch: str) -> dict[str, Path]:
     base = root / "worktrees" / branch
-    return {name: base / name for name in FEATURE_REPOS if (base / name).is_dir()}
+    return {name: base / name for name in attached_repo_names(root, branch)}
 
 
 def diff_base(root: Path, branch: str, repo: Path) -> str:
@@ -338,7 +338,7 @@ def parse_test_output(command: dict, output: str, returncode: int) -> tuple[bool
     return False, "configured success pattern not found"
 
 
-def red_proof_cites_path(text: str, path: str) -> bool:
+def red_proof_cites_path(text: str, path: str, repos: tuple[str, ...] = FEATURE_REPOS) -> bool:
     """True when red-proof.md mentions a changed test file.
 
     Agents often list files as ``apaleo/test/...`` (workspace-relative) or as
@@ -349,7 +349,7 @@ def red_proof_cites_path(text: str, path: str) -> bool:
     if normalized and normalized in text:
         return True
     repo, _, remainder = normalized.partition("/")
-    return bool(repo in FEATURE_REPOS and remainder and remainder in text)
+    return bool(repo in repos and remainder and remainder in text)
 
 
 def dirty_workspace_paths(root: Path, branch: str) -> list[str]:
@@ -412,7 +412,8 @@ def validate_red_proof(
     if missing:
         raise VerificationError("red-proof.md is missing mapped test/command evidence: " + ", ".join(missing))
     missing_paths = [
-        path for path in changed_test_paths or [] if not red_proof_cites_path(text, path)
+        path for path in changed_test_paths or []
+        if not red_proof_cites_path(text, path, repos_from_manifest(manifest))
     ]
     if missing_paths:
         raise VerificationError(

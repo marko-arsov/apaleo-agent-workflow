@@ -14,9 +14,13 @@ PLAN="$ROOT/ai-plans/$BRANCH"
 "$SCRIPT_DIR/../references/e2e-local-scope-workaround.sh" restore --root "$ROOT"
 
 REPOS=()
+CANDIDATES=()
 DIRTY_REPOS=()
 BAD_PATHS=""
-for repo in "${FEATURE_REPOS[@]}"; do
+while IFS= read -r repo; do
+  [[ -n "$repo" ]] && CANDIDATES+=("$repo")
+done < <(attached_repos "$BRANCH")
+for repo in "${CANDIDATES[@]:-}"; do
   dest="$WT/$repo"
   is_git_checkout "$dest" || continue
   current="$(git -C "$dest" branch --show-current)"

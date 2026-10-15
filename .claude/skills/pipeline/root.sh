@@ -9,15 +9,26 @@
 # Keep in sync with FEATURE_REPOS in pipeline/common.py (test_feature_repos_inventory).
 FEATURE_REPOS=(apaleo development identity agent-skills angular-api-proxy)
 GITHUB_REPOS=(apaleo/apaleo apaleo/development apaleo/identity apaleo/agent-skills apaleo/angular-api-proxy)
+PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Build a find(1) name predicate from FEATURE_REPOS so the worktree scan can never
-# drift from the repo inventory: ( -name a -o -name b -o ... ).
+# drift from the repo inventory: ( -name a -o -name b -o ... ). Recorded extra
+# repositories are added in resolve_feature_branch.
 find_repo_predicate=()
-for _repo in "${FEATURE_REPOS[@]}"; do
-  [[ ${#find_repo_predicate[@]} -eq 0 ]] || find_repo_predicate+=(-o)
-  find_repo_predicate+=(-name "$_repo")
-done
-unset _repo
+refresh_find_predicate() {
+  local repo
+  find_repo_predicate=()
+  for repo in "${FEATURE_REPOS[@]}"; do
+    [[ ${#find_repo_predicate[@]} -eq 0 ]] || find_repo_predicate+=(-o)
+    find_repo_predicate+=(-name "$repo")
+  done
+  [[ -n "${ROOT:-}" ]] || return 0
+  while IFS= read -r repo; do
+    [[ -n "$repo" ]] || continue
+    find_repo_predicate+=(-o -name "$repo")
+  done < <(python3 "$PIPELINE_DIR/common.py" discover-extras --root "$ROOT" 2>/dev/null || true)
+}
+refresh_find_predicate
 
 resolve_root() {
   local d cwd
@@ -56,26 +67,44 @@ feature_worktree_exists() {
   for repo in "${FEATURE_REPOS[@]}"; do
     is_git_checkout "$wt/$repo" && return 0
   done
+  if [[ -f "$wt/.extra-repos" ]]; then
+    while IFS= read -r repo; do
+      [[ -n "$repo" ]] || continue
+      is_git_checkout "$wt/$repo" && return 0
+    done < "$wt/.extra-repos"
+  fi
   return 1
+}
+
+attached_repos() {
+  local branch="$1"
+  python3 "$PIPELINE_DIR/common.py" attached-repos --root "$ROOT" --branch "$branch"
 }
 
 # Resolve a full feature branch from a full name, issue shorthand, or the current
 # worktree. Call after ROOT="$(resolve_root)". Short ids must be unique.
 worktree_branch_from_cwd() {
-  local cwd rel repo
+  local cwd d outer parent rel child
   cwd="$(pwd -P 2>/dev/null || pwd)"
   case "$cwd" in "$ROOT"/worktrees/*) ;; *) return 0 ;; esac
-  rel="${cwd#"$ROOT/worktrees/"}"
-  for repo in "${FEATURE_REPOS[@]}"; do
-    case "$rel" in
-      */"$repo"|*/"$repo"/*)
-        printf '%s' "${rel%/"$repo"*}"
-        return 0
-        ;;
-    esac
+  # The outermost checkout under worktrees is the feature repository. A nested
+  # submodule stays inside it, so the branch is that checkout's parent.
+  outer=""
+  d="$cwd"
+  while [[ "$d" == "$ROOT"/worktrees/* ]]; do
+    if is_git_checkout "$d"; then
+      outer="$d"
+    fi
+    d="$(dirname "$d")"
   done
-  for repo in "${FEATURE_REPOS[@]}"; do
-    if is_git_checkout "$cwd/$repo"; then
+  if [[ -n "$outer" ]]; then
+    parent="$(dirname "$outer")"
+    printf '%s' "${parent#"$ROOT/worktrees/"}"
+    return 0
+  fi
+  rel="${cwd#"$ROOT/worktrees/"}"
+  for child in "$cwd"/*; do
+    if is_git_checkout "$child"; then
       printf '%s' "$rel"
       return 0
     fi
@@ -104,10 +133,20 @@ feature_match_add() {
 
 # Print the branch for a PR URL, #number, or bare number. Return 1 when the
 # query is not a PR reference and 2 when it is one but cannot be resolved.
+consider_pr_repo() {
+  local number="$1" repo="$2" branch existing found
+  branch="$(gh pr view "$number" --repo "$repo" --json headRefName -q .headRefName 2>/dev/null || true)"
+  [[ -n "$branch" ]] || return 0
+  found=0
+  for existing in "${matches[@]:-}"; do [[ "$existing" == "$branch" ]] && found=1; done
+  [[ "$found" == "0" ]] && matches+=("$branch")
+}
+
 feature_pr_branch() {
-  local query="$1" number repo branch
+  local query="$1" number repo name
   local -a matches=()
   if [[ "$query" == *github.com/*/pull/* ]]; then
+    local branch
     branch="$(gh pr view "$query" --json headRefName -q .headRefName 2>/dev/null || true)"
     [[ -n "$branch" ]] && { printf '%s' "$branch"; return 0; }
     return 2
@@ -115,31 +154,40 @@ feature_pr_branch() {
   number="${query#\#}"
   [[ "$number" =~ ^[0-9]+$ ]] || return 1
   for repo in "${GITHUB_REPOS[@]}"; do
-    branch="$(gh pr view "$number" --repo "$repo" --json headRefName -q .headRefName 2>/dev/null || true)"
-    [[ -n "$branch" ]] || continue
-    local existing found=0
-    for existing in "${matches[@]:-}"; do [[ "$existing" == "$branch" ]] && found=1; done
-    [[ "$found" == "0" ]] && matches+=("$branch")
+    consider_pr_repo "$number" "$repo"
   done
+  # Attached extras only. A pull request in some other org repository is not searched.
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    consider_pr_repo "$number" "apaleo/$name"
+  done < <(python3 "$PIPELINE_DIR/common.py" discover-extras --root "$ROOT" 2>/dev/null || true)
   [[ ${#matches[@]} -eq 1 ]] && { printf '%s' "${matches[0]}"; return 0; }
   [[ ${#matches[@]} -gt 1 ]] && return 2
   return 2
 }
 
 feature_remote_issue_matches() {
-  local issue="$1" repo branch
+  local issue="$1" repo branch name
   for repo in "${GITHUB_REPOS[@]}"; do
     while IFS= read -r branch; do
       feature_match_add "$branch"
     done < <(gh pr list --repo "$repo" --search "$issue in:title" --state all --limit 10 \
       --json headRefName -q '.[].headRefName' 2>/dev/null || true)
   done
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    while IFS= read -r branch; do
+      feature_match_add "$branch"
+    done < <(gh pr list --repo "apaleo/$name" --search "$issue in:title" --state all --limit 10 \
+      --json headRefName -q '.[].headRefName' 2>/dev/null || true)
+  done < <(python3 "$PIPELINE_DIR/common.py" discover-extras --root "$ROOT" 2>/dev/null || true)
 }
 
 resolve_feature_branch() {
   local query="${1:-}" cwd_branch needle branch branch_l repo_dir wt plan plan_file pr_branch pr_rc=0
   local -a matches=()
 
+  refresh_find_predicate
   cwd_branch="$(worktree_branch_from_cwd)"
   if [[ -z "$query" ]]; then
     [[ -n "$cwd_branch" ]] || die_ask "pass branch name"

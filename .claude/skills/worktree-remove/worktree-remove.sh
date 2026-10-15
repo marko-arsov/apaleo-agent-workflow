@@ -22,15 +22,32 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+remove_checkout() {
+  local dest="$1" common
+  common="$(git -C "$dest" rev-parse --git-common-dir)"
+  if [[ "$common" != /* ]]; then
+    common="$(cd "$dest" && cd "$common" && pwd -P)"
+  fi
+  if [[ "$FORCE" == "1" ]]; then
+    git --git-dir="$common" worktree remove --force "$dest"
+  else
+    git --git-dir="$common" worktree remove "$dest"
+  fi
+}
+
 remove_one() {
   local br="$1"
   local wt="$ROOT/worktrees/$br"
   [[ -d "$wt" ]] || { echo "skip $br (no worktree dir)"; return 0; }
   echo "Candidate $br  $wt"
-  for repo in "${FEATURE_REPOS[@]}"; do
-    local dest="$wt/$repo"
+  local repos=() repo dest dirty
+  while IFS= read -r repo; do
+    [[ -n "$repo" ]] && repos+=("$repo")
+  done < <(attached_repos "$br")
+  for repo in "${repos[@]:-}"; do
+    dest="$wt/$repo"
     is_git_checkout "$dest" || continue
-    local dirty=""
+    dirty=""
     [[ -z "$(git -C "$dest" status --porcelain)" ]] || dirty=" DIRTY"
     echo "  $repo $(git -C "$dest" rev-parse --short HEAD)$dirty"
     if [[ -n "$dirty" && "$FORCE" != "1" ]]; then
@@ -40,12 +57,10 @@ remove_one() {
   if [[ "$YES" != "1" ]]; then
     die_ask "re-run with --yes to remove $wt"
   fi
-  for repo in "${FEATURE_REPOS[@]}"; do
-    local dest="$wt/$repo"
+  for repo in "${repos[@]:-}"; do
+    dest="$wt/$repo"
     is_git_checkout "$dest" || continue
-    local args=(worktree remove "$dest")
-    [[ "$FORCE" == "1" ]] && args=(worktree remove --force "$dest")
-    if git -C "$ROOT/$repo" "${args[@]}"; then
+    if remove_checkout "$dest"; then
       echo "  $repo/  ok"
     else
       echo "  $repo/  failed"

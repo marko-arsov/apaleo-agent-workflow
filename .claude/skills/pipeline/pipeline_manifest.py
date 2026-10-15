@@ -16,7 +16,7 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
-from common import FEATURE_REPOS
+from common import FEATURE_REPOS, repos_from_manifest, valid_extra_repo_name
 
 
 VERSION = 2
@@ -297,11 +297,11 @@ def parse_stages(value: str | list[str]) -> list[str]:
     return [stage for stage in STAGE_ORDER if stage in seen]
 
 
-def _safe_repo_path(path: str) -> bool:
+def _safe_repo_path(path: str, repos: tuple[str, ...] = FEATURE_REPOS) -> bool:
     normalized = path.replace("\\", "/")
     parts = Path(normalized).parts
     return not normalized.startswith(("/", "~")) and ".." not in parts and any(
-        normalized.startswith(f"{repo}/") for repo in FEATURE_REPOS
+        normalized.startswith(f"{repo}/") for repo in repos
     )
 
 
@@ -438,6 +438,14 @@ def validate(manifest: dict) -> list[str]:
             errors.append("base_branch is only for stacked plans; omit it for master")
     if selected != [stage for stage in STAGE_ORDER if stage in selected]:
         errors.append("selected stages are not in canonical order")
+    extras = manifest.get("extra_repos", [])
+    if "extra_repos" in manifest and (
+        not isinstance(extras, list)
+        or len(extras) != len(set(extras))
+        or not all(isinstance(item, str) and valid_extra_repo_name(item) for item in extras)
+    ):
+        errors.append("extra_repos must be a list of apaleo repository names outside the parked five")
+    repos = repos_from_manifest(manifest)
     allowed = manifest.get("allowed_paths") or []
     test_paths = manifest.get("test_paths") or []
     for label, paths in (("allowed_paths", allowed), ("test_paths", test_paths)):
@@ -447,7 +455,7 @@ def validate(manifest: dict) -> list[str]:
         if len(paths) != len(set(paths)):
             errors.append(f"{label} must not contain duplicates")
         for path in paths:
-            if not _safe_repo_path(path):
+            if not _safe_repo_path(path, repos):
                 errors.append(f"{label}: unsafe or non-worktree path glob {path}")
     if not allowed:
         errors.append("allowed_paths must name at least one product/generated path")
@@ -485,8 +493,8 @@ def validate(manifest: dict) -> list[str]:
         if not command_id or command_id in command_ids:
             errors.append(f"test command id is empty or duplicated: {command_id or '<empty>'}")
         command_ids.add(command_id)
-        if command.get("repo") not in FEATURE_REPOS:
-            errors.append(f"{command_id}: repo must be one of {', '.join(FEATURE_REPOS)}")
+        if command.get("repo") not in repos:
+            errors.append(f"{command_id}: repo must be one of {', '.join(repos)}")
         argv = command.get("argv")
         if not isinstance(argv, list) or not argv or not all(isinstance(arg, str) and arg for arg in argv):
             errors.append(f"{command_id}: argv must be a non-empty string list")
@@ -527,7 +535,7 @@ def validate(manifest: dict) -> list[str]:
             errors.append(f"acceptance criterion id is empty or duplicated: {criterion_id or '<empty>'}")
         criterion_ids.add(criterion_id)
         path = str(criterion.get("test_path") or "")
-        if not path or not _safe_repo_path(path) or not path_allowed(path, test_paths):
+        if not path or not _safe_repo_path(path, repos) or not path_allowed(path, test_paths):
             errors.append(f"{criterion_id}: test_path must match test_paths")
         if str(criterion.get("command") or "") not in command_ids:
             errors.append(f"{criterion_id}: command must reference a test_commands id")
@@ -636,6 +644,7 @@ def make_manifest(
     estimate_points: int | None = None,
     stacked_on: str | None = None,
     model_selection: dict | None = None,
+    extra_repos: list[str] | None = None,
 ) -> dict:
     chosen = set(parse_stages(stages))
     chosen.add("implement")
@@ -696,6 +705,8 @@ def make_manifest(
     }
     if stacked_on:
         manifest["base_branch"] = stacked_on
+    if extra_repos:
+        manifest["extra_repos"] = list(dict.fromkeys(extra_repos))
     if selection:
         manifest["review_selection"] = selection
     if tests_required:
@@ -820,6 +831,9 @@ def markdown(manifest: dict) -> str:
         lines.append(
             f"- Stacked on `{manifest['base_branch']}`: diffs, scope, budget, the preflight sync and the draft PR use it instead of master."
         )
+    if manifest.get("extra_repos"):
+        listed = ", ".join(f"`{name}`" for name in manifest["extra_repos"])
+        lines.append(f"- Extra repositories: {listed}.")
     lines += [
         "",
         "| Stage | Selected | Required | Provider | Model | Reasoning | Fallbacks |",
@@ -956,6 +970,7 @@ def main() -> int:
     create.add_argument("--estimate-points", type=int, choices=sorted(ESTIMATE_POINTS))
     create.add_argument("--model-selection", type=Path, help="Reviewed offline evaluator snapshot")
     create.add_argument("--base-branch", default="", help="unmerged branch a stacked plan is cut from")
+    create.add_argument("--extra-repo", action="append", default=[], help="apaleo org repository attached to this branch")
 
     for name in ("resolve", "selected", "markdown", "plan-dir", "base-branch"):
         command = sub.add_parser(name)
@@ -1001,6 +1016,7 @@ def main() -> int:
                 estimate_points=args.estimate_points,
                 stacked_on=args.base_branch or None,
                 model_selection=json.loads(args.model_selection.read_text()) if args.model_selection else None,
+                extra_repos=args.extra_repo,
             )
             plan_dir = Path(args.plan_dir).resolve()
             plan_dir.mkdir(parents=True, exist_ok=True)

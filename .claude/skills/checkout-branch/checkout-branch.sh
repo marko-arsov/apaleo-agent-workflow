@@ -11,7 +11,8 @@ BRANCH="$(resolve_feature_branch "$TARGET")"
 echo "Resolved: $BRANCH"
 "$ROOT/.claude/skills/worktree-start/worktree-start.sh" "$BRANCH"
 
-for repo in "${FEATURE_REPOS[@]}"; do
+while IFS= read -r repo; do
+  [[ -n "$repo" ]] || continue
   dest="$ROOT/worktrees/$BRANCH/$repo"
   is_git_checkout "$dest" || continue
   if [[ -n "$(git -C "$dest" status --porcelain)" ]]; then
@@ -29,7 +30,7 @@ for repo in "${FEATURE_REPOS[@]}"; do
   else
     die_ask "$repo diverged from origin/$BRANCH — not fast-forward"
   fi
-done
+done < <(attached_repos "$BRANCH")
 echo "WT=$ROOT/worktrees/$BRANCH"
 mains_report() {
   local m="" r

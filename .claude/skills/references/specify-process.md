@@ -119,7 +119,8 @@ elevated risk; mutation testing remains explicit and diff-scoped only.
 
 After all answers are confirmed, create/reuse matching worktrees under
 `$ROOT/worktrees/<branch>/{apaleo?,development?,identity?,agent-skills?,angular-api-proxy?}` from `origin/master`; parked mains stay
-on `master`. Product tickets create apaleo (plus development/identity when needed). Team-plugin work that does
+on `master`. When the ticket names another `apaleo` org repository, confirm it and add `--with <name>`
+plus manifest `--extra-repo <name>`. Product tickets create apaleo (plus development/identity when needed). Team-plugin work that does
 not touch apaleo/development/identity uses `worktree-start.sh <branch> --from-master --agent-skills-only`, and
 Angular-client work that does not touch apaleo uses `--angular-api-proxy-only` — do
 not create an apaleo worktree “just in case.” Write:

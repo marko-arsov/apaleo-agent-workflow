@@ -67,6 +67,9 @@ checks remain available when explicitly choosing that host. Read `references/mod
    update in the final confirmation and obtain action-specific confirmation. After writing the plan
    files, apply that confirmed update; otherwise leave Linear unchanged.
 8. With permission, create feature worktrees only under `$ROOT/worktrees/<branch>/`; never switch parked mains.
+   When the ticket or the user names an `apaleo` org repository other than the parked five, confirm that
+   name, then pass `worktree-start --with <name>` and record it as `--extra-repo` on the manifest.
+   Do not attach a repository that was not named.
 9. Always write `prompt.md`, `product.md`, `implementation.md`, `deferred-scope.md`, and a concise
    `pipeline.json` so the plan can later enter the full pipeline without being recreated. For the
    manual lane, keep its stage/routes section informational; do not require pipeline-only reports,
