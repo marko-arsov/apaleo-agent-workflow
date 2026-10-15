@@ -48,7 +48,7 @@ Utilities
   /worktree-start  /worktree-list  /worktree-remove
   /e2e-stack-status  /e2e-stack-release  /e2e-test-overview
   /peer-pr-review  /peer-rfc-review  /wizard  /update-agent-skills
-  /update-models  /publish-workflow  /add-rule  /prune-context  /pipeline-workflow  /list-pipeline
+  /update-models  /update-workflow  /publish-workflow  /add-rule  /prune-context  /pipeline-workflow  /list-pipeline
 
 Manual recovery
 ---------------

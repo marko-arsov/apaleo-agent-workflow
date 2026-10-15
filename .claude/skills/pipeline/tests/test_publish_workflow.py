@@ -36,11 +36,24 @@ class PublishWorkflowTests(unittest.TestCase):
         subprocess.run(["git", "init", "--bare", "-b", "master", str(self.origin)], check=True, capture_output=True)
         subprocess.run(["git", "init", "-b", "master", str(self.workspace)], check=True, capture_output=True)
         subprocess.run(["git", "-C", str(self.workspace), "remote", "add", "origin", str(self.origin)], check=True)
+        bin_dir = self.root / "bin"
+        bin_dir.mkdir()
+        self.gh_args = self.root / "gh.args"
+        gh = bin_dir / "gh"
+        gh.write_text(
+            "#!/bin/sh\n: > \"$GH_ARGS_FILE\"\n"
+            "while [ $# -gt 0 ]; do printf '%s\\n' \"$1\" >> \"$GH_ARGS_FILE\"; shift; done\n"
+            "printf '%s\\n' 'https://github.com/marko-arsov/apaleo-agent-workflow/pull/1'\n",
+            encoding="utf-8",
+        )
+        gh.chmod(0o755)
         self.git_env = {
             "GIT_AUTHOR_NAME": "Publish Test",
             "GIT_AUTHOR_EMAIL": "publish-test@example.com",
             "GIT_COMMITTER_NAME": "Publish Test",
             "GIT_COMMITTER_EMAIL": "publish-test@example.com",
+            "GH_ARGS_FILE": str(self.gh_args),
+            "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
         }
         self.commit("AGENTS.md", "Initial workflow checkout")
         subprocess.run(
@@ -49,15 +62,6 @@ class PublishWorkflowTests(unittest.TestCase):
             capture_output=True,
             env={**os.environ, **self.git_env},
         )
-        bin_dir = self.root / "bin"
-        bin_dir.mkdir()
-        gh = bin_dir / "gh"
-        gh.write_text(
-            "#!/bin/sh\nprintf '%s\\n' 'https://github.com/marko-arsov/apaleo-agent-workflow/pull/1'\n",
-            encoding="utf-8",
-        )
-        gh.chmod(0o755)
-        self.git_env["PATH"] = f"{bin_dir}:{os.environ.get('PATH', '')}"
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -134,6 +138,9 @@ class PublishWorkflowTests(unittest.TestCase):
             capture_output=True,
         ).stdout.strip()
         self.assertEqual(message, "Update publish-workflow")
+        body = self.gh_args.read_text(encoding="utf-8")
+        self.assertIn("Add `/publish-workflow`.", body)
+        self.assertNotIn("## Changes", body)
         branch = subprocess.run(
             ["git", "-C", str(self.workspace), "branch", "--show-current"],
             check=True,

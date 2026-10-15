@@ -26,7 +26,7 @@ ROOT = SCRIPT_DIR.parents[2]
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from assemble_prompt import DEFAULT_REFS_BY_STAGE, assemble  # noqa: E402
-from common import FEATURE_REPOS  # noqa: E402
+from common import attached_repo_names, parked_checkout_names  # noqa: E402
 from models import models_match, parse_stream_json  # noqa: E402
 from pipeline_manifest import (  # noqa: E402
     AI_STAGES,
@@ -80,7 +80,6 @@ RUNS_DIR = ROOT / ".local" / "pipeline-runs"
 LOCKS_DIR = ROOT / ".local" / "pipeline-locks"
 HEALTH_DIR = ROOT / ".local" / "pipeline-health"
 LIVE_DIR = RUNS_DIR
-REPOS = FEATURE_REPOS
 
 
 class PipelineError(RuntimeError):
@@ -261,7 +260,7 @@ def find_claude() -> str:
 
 def worktrees(branch: str) -> dict[str, Path]:
     base = ROOT / "worktrees" / branch
-    return {repo: base / repo for repo in REPOS if (base / repo).is_dir()}
+    return {repo: base / repo for repo in attached_repo_names(ROOT, branch)}
 
 
 def git(path: Path, *args: str, timeout: int = 60, check: bool = False) -> subprocess.CompletedProcess:
@@ -349,9 +348,9 @@ def repositories_with_base_diff(branch: str) -> dict[str, Path]:
     return changed
 
 
-def parked_main_snapshot() -> dict[str, dict]:
+def parked_main_snapshot(branch: str) -> dict[str, dict]:
     result: dict[str, dict] = {}
-    for name in REPOS:
+    for name in parked_checkout_names(ROOT, branch):
         path = ROOT / name
         if not path.is_dir():
             continue
@@ -363,8 +362,8 @@ def parked_main_snapshot() -> dict[str, dict]:
     return result
 
 
-def ensure_parked_mains_unchanged(before: dict[str, dict]) -> None:
-    after = parked_main_snapshot()
+def ensure_parked_mains_unchanged(before: dict[str, dict], branch: str) -> None:
+    after = parked_main_snapshot(branch)
     changed = [name for name in sorted(set(before) | set(after)) if before.get(name) != after.get(name)]
     if changed:
         raise PipelineError(
@@ -708,7 +707,7 @@ def preflight(
     repos = worktrees(branch)
     if not repos:
         problems.append(f"no feature worktree found: {ROOT / 'worktrees' / branch}")
-    for main in REPOS:
+    for main in parked_checkout_names(ROOT, branch):
         path = ROOT / main
         if not path.is_dir():
             continue
@@ -1809,7 +1808,7 @@ def run_ai_stage(
     args: argparse.Namespace,
 ) -> str:
     baseline = snapshot(branch)
-    parked_before = parked_main_snapshot()
+    parked_before = parked_main_snapshot(branch)
     contract_before = plan_contract_snapshot(plan_dir)
     policy_before = workflow_policy_snapshot(stage)
     routes = stage_routes(manifest, stage)
@@ -2027,7 +2026,7 @@ def run_ai_stage(
             continuation=continuation,
             continuation_prompt=continuation_prompt(stage, str(pending.get("question") or ""), args.answer),
         )
-        ensure_parked_mains_unchanged(parked_before)
+        ensure_parked_mains_unchanged(parked_before, branch)
         ensure_plan_contract_unchanged(plan_dir, contract_before)
         report_policy_update()
         record_result(result, resumed=True, continuation=continuation)
@@ -2072,7 +2071,7 @@ def run_ai_stage(
                 continuation=continuation,
                 continuation_prompt=continuation_prompt(stage, result.reason),
             )
-            ensure_parked_mains_unchanged(parked_before)
+            ensure_parked_mains_unchanged(parked_before, branch)
             ensure_plan_contract_unchanged(plan_dir, contract_before)
             report_policy_update()
             record_result(result, resumed=True, continuation=continuation)
@@ -2136,7 +2135,7 @@ def run_ai_stage(
                 baseline,
                 recovery_packets,
             )
-            ensure_parked_mains_unchanged(parked_before)
+            ensure_parked_mains_unchanged(parked_before, branch)
             ensure_plan_contract_unchanged(plan_dir, contract_before)
             report_policy_update()
             record_result(result, resumed=False, continuation=0)
@@ -2182,7 +2181,7 @@ def run_ai_stage(
                         continuation=continuation,
                         continuation_prompt=continuation_prompt(stage, result.reason),
                     )
-                    ensure_parked_mains_unchanged(parked_before)
+                    ensure_parked_mains_unchanged(parked_before, branch)
                     ensure_plan_contract_unchanged(plan_dir, contract_before)
                     report_policy_update()
                     record_result(result, resumed=True, continuation=continuation)
@@ -2247,7 +2246,7 @@ def run_ai_stage(
 
 
 def run_script_stage(stage: str, branch: str, run_dir: Path, reporter: Reporter) -> str:
-    parked_before = parked_main_snapshot()
+    parked_before = parked_main_snapshot(branch)
     policy_before = workflow_policy_snapshot(stage)
     if stage == "commit-and-push":
         workaround = ROOT / ".claude/skills/references/e2e-local-scope-workaround.sh"
@@ -2272,7 +2271,7 @@ def run_script_stage(stage: str, branch: str, run_dir: Path, reporter: Reporter)
     )
     if result.returncode:
         raise PipelineError(f"{stage} script exited {result.returncode}: {(result.stderr or result.stdout)[-400:]}")
-    ensure_parked_mains_unchanged(parked_before)
+    ensure_parked_mains_unchanged(parked_before, branch)
     changed_policy = ensure_workflow_policy_unchanged(stage, policy_before)
     if changed_policy:
         reporter.emit(
@@ -2672,12 +2671,12 @@ def run(args: argparse.Namespace) -> int:
                 message="rerun invalidated: " + ", ".join(invalidated),
             )
         save_state(ROOT, args.task, state, plan_branch_dir(plan_dir))
-        run_parked_baseline = parked_main_snapshot()
+        run_parked_baseline = parked_main_snapshot(branch)
         run_plan_baseline = plan_contract_snapshot(plan_dir)
         if not args.no_sync_master and any(stage in stages for stage in ("implement-tests", "implement")):
             sync_master(branch, reporter)
         for stage in stages:
-            ensure_parked_mains_unchanged(run_parked_baseline)
+            ensure_parked_mains_unchanged(run_parked_baseline, branch)
             ensure_plan_contract_unchanged(plan_dir, run_plan_baseline)
             if stage == "commit-and-push":
                 try:
@@ -2716,7 +2715,7 @@ def run(args: argparse.Namespace) -> int:
                 )
                 save_state(ROOT, args.task, state, plan_branch_dir(plan_dir))
                 evidence = run_script_stage(stage, branch, run_dir, reporter)
-            ensure_parked_mains_unchanged(run_parked_baseline)
+            ensure_parked_mains_unchanged(run_parked_baseline, branch)
             ensure_plan_contract_unchanged(plan_dir, run_plan_baseline)
             mark_complete(state, stage, evidence)
             if stage == "implement":

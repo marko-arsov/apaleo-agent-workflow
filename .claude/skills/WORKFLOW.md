@@ -247,7 +247,10 @@ No item adds a recurring model call.
 - Feature code only under `worktrees/<branch>/`; parked mains stay on `master`.
 - Repository inventory is `apaleo`, `development`, `identity`, `agent-skills`, `angular-api-proxy`.
   `apaleo` is the default; the other four are opt-in and are never created for ordinary backend
-  work. `$ROOT` resolution depends only on `AGENTS.md` + `apaleo/` + `development/`.
+  work. `$ROOT` resolution depends only on `AGENTS.md` + `apaleo/` + `development/`. Another
+  `apaleo` org repository attaches for one branch with `--with <name>`: an existing sibling
+  checkout is reused, and a missing one is mirrored under `.repos/`. Later stages see it only
+  when that branch recorded it.
 - Never push a base branch or force-push.
 - Never weaken, skip, delete, or quarantine a failing test.
 - Never run destructive shared-environment E2E without confirmation.
@@ -255,6 +258,21 @@ No item adds a recurring model call.
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-10-15: `/publish-workflow` pull request bodies are a few short bullets for the
+  commands, pipeline, tests, and docs that changed.
+
+- 2026-10-15: A branch can attach any other `apaleo` org repository with
+  `worktree-start --with <name>`. The five parked clones stay as they are. An existing
+  `$ROOT/<name>` checkout of that repository is the worktree source; otherwise the first
+  attach creates a bare mirror at `$ROOT/.repos/<name>.git`. `/specify` confirms the name
+  and records `extra_repos`. Commit, push, sync, draft PR, checkout, list, remove, and
+  pipeline verification include that checkout and ignore an unlisted directory beside it.
+
+- 2026-10-15: Added `/update-workflow`. On a clean `master` it fast-forwards this
+  checkout from `origin/master` and runs `install.sh` so new commands are
+  registered. It stops when the checkout is dirty, on another branch, or cannot
+  fast-forward. It does not touch product repositories.
 
 - 2026-10-15: `/migration-script` now follows the production runbook. It runs
   `dotnet ef migrations script <last-applied> --output Migration.sql` with no `-i`

@@ -10,7 +10,11 @@ BRANCH="$(resolve_feature_branch "${1:-}")"
 echo "Push $BRANCH"
 needs_remote_sync=0
 found=0
-for repo in "${FEATURE_REPOS[@]}"; do
+REPOS=()
+while IFS= read -r repo; do
+  [[ -n "$repo" ]] && REPOS+=("$repo")
+done < <(attached_repos "$BRANCH")
+for repo in "${REPOS[@]:-}"; do
   dest="$ROOT/worktrees/$BRANCH/$repo"
   if ! is_git_checkout "$dest"; then
     continue
@@ -32,7 +36,7 @@ if [[ "$needs_remote_sync" == "1" ]]; then
   "$SCRIPT_DIR/../sync-master/sync-master.sh" --remote-branch "$BRANCH"
 fi
 
-for repo in "${FEATURE_REPOS[@]}"; do
+for repo in "${REPOS[@]:-}"; do
   dest="$ROOT/worktrees/$BRANCH/$repo"
   if ! is_git_checkout "$dest"; then
     echo "$repo  skipped (no worktree)"
@@ -54,7 +58,7 @@ for repo in "${FEATURE_REPOS[@]}"; do
   fi
 done
 pr_found=0
-for repo in "${FEATURE_REPOS[@]}"; do
+for repo in "${REPOS[@]:-}"; do
   dest="$ROOT/worktrees/$BRANCH/$repo"
   is_git_checkout "$dest" || continue
   url="$(cd "$dest" && gh pr view --json url -q .url 2>/dev/null || true)"

@@ -50,9 +50,10 @@ merge_one() {
   fi
 }
 
-for repo in "${FEATURE_REPOS[@]}"; do
+while IFS= read -r repo; do
+  [[ -n "$repo" ]] || continue
   merge_one "$WT/$repo" "$repo"
-done
+done < <(attached_repos "$BRANCH")
 [[ "$REMOTE_BRANCH" == "1" ]] || echo "Mains still $(git -C "$ROOT/apaleo" branch --show-current)"
 if [[ "$conflicted" == "1" ]]; then
   echo "HANDOFF_CONFLICTS=1"

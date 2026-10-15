@@ -88,6 +88,178 @@ summary_from_paths() {
   printf '%s, and %s' "$out" "$last"
 }
 
+join_items() {
+  local -a items=("$@")
+  local n=${#items[@]} i out
+  [[ "$n" -gt 0 ]] || return 0
+  if [[ "$n" -eq 1 ]]; then
+    printf '%s' "${items[0]}"
+    return 0
+  fi
+  if [[ "$n" -eq 2 ]]; then
+    printf '%s and %s' "${items[0]}" "${items[1]}"
+    return 0
+  fi
+  out="${items[0]}"
+  i=1
+  while [[ "$i" -lt $((n - 1)) ]]; do
+    out="$out, ${items[$i]}"
+    i=$((i + 1))
+  done
+  printf '%s, and %s' "$out" "${items[$((n - 1))]}"
+}
+
+skill_of() {
+  local path="$1" rest base
+  case "$path" in
+    .claude/skills/pipeline/*|.claude/skills/references/*) return 1 ;;
+    .claude/skills/*/*)
+      rest="${path#.claude/skills/}"
+      printf '%s' "${rest%%/*}"
+      ;;
+    .cursor/agents/*-cursor.md)
+      base="${path##*/}"
+      printf '%s' "${base%-cursor.md}"
+      ;;
+    host/routers/*.md)
+      base="${path##*/}"
+      printf '%s' "${base%.md}"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+remember_name() {
+  local kind="$1" name="$2" item
+  local -a existing=()
+  if [[ "$kind" == added ]]; then
+    existing=("${added_names[@]:-}")
+  else
+    existing=("${updated_names[@]:-}")
+    for item in "${added_names[@]:-}"; do
+      [[ "$item" == "$name" ]] && return 0
+    done
+  fi
+  for item in "${existing[@]:-}"; do
+    [[ "$item" == "$name" ]] && return 0
+  done
+  if [[ "$kind" == added ]]; then
+    added_names+=("$name")
+  else
+    updated_names+=("$name")
+  fi
+}
+
+remember_test() {
+  local kind="$1" name="$2" item
+  local -a existing=()
+  if [[ "$kind" == added ]]; then
+    existing=("${added_tests[@]:-}")
+  else
+    existing=("${updated_tests[@]:-}")
+    for item in "${added_tests[@]:-}"; do
+      [[ "$item" == "$name" ]] && return 0
+    done
+  fi
+  for item in "${existing[@]:-}"; do
+    [[ "$item" == "$name" ]] && return 0
+  done
+  if [[ "$kind" == added ]]; then
+    added_tests+=("$name")
+  else
+    updated_tests+=("$name")
+  fi
+}
+
+# Read git name-status lines on stdin. Print a few short bullets.
+pr_bullets() {
+  local status path extra skill base
+  local pipeline=0 docs=0 other=0
+  added_names=()
+  updated_names=()
+  added_tests=()
+  updated_tests=()
+  while IFS=$'\t' read -r status path extra; do
+    [[ -n "$status" ]] || continue
+    case "$status" in
+      R*|C*) path="$extra" ;;
+    esac
+    case "$path" in
+      .claude/skills/pipeline/tests/test_*.py)
+        base="${path##*/}"
+        base="${base#test_}"
+        base="${base%.py}"
+        base="${base//_/-}"
+        if [[ "$status" == A ]]; then
+          remember_test added "$base"
+        else
+          remember_test updated "$base"
+        fi
+        ;;
+      .claude/skills/pipeline/*)
+        pipeline=1
+        ;;
+      WORKFLOW.md|AGENTS.md|CLAUDE.md|README.md|.claude/skills/WORKFLOW.md|.claude/skills/references/*)
+        docs=1
+        ;;
+      *)
+        if skill="$(skill_of "$path")"; then
+          if [[ "$status" == A && ( "$path" == ".claude/skills/$skill/SKILL.md" || "$path" == ".claude/skills/$skill/$skill.sh" ) ]]; then
+            remember_name added "$skill"
+          else
+            remember_name updated "$skill"
+          fi
+        else
+          other=1
+        fi
+        ;;
+    esac
+  done
+  if [[ ${#added_names[@]} -gt 0 ]]; then
+    printf '%s\n' "- Add $(quoted_commands "${added_names[@]}")."
+  fi
+  if [[ ${#updated_names[@]} -gt 0 ]]; then
+    printf '%s\n' "- Update $(quoted_commands "${updated_names[@]}")."
+  fi
+  if [[ "$pipeline" -eq 1 ]]; then
+    printf '%s\n' "- Update the pipeline runner."
+  fi
+  if [[ ${#added_tests[@]} -gt 0 ]]; then
+    printf '%s\n' "- Add tests for $(join_items "${added_tests[@]}")."
+  fi
+  if [[ ${#updated_tests[@]} -gt 0 ]]; then
+    printf '%s\n' "- Update tests for $(join_items "${updated_tests[@]}")."
+  fi
+  if [[ "$docs" -eq 1 ]]; then
+    printf '%s\n' "- Update the workflow docs."
+  fi
+  if [[ "$other" -eq 1 ]]; then
+    printf '%s\n' "- Update other workflow files."
+  fi
+}
+
+quoted_commands() {
+  local -a items=()
+  local name
+  for name in "$@"; do
+    items+=('`/'"$name"'`')
+  done
+  join_items "${items[@]}"
+}
+
+# Title is $1. Name-status lines are on stdin.
+pr_body() {
+  local title="$1" bullets
+  bullets="$(pr_bullets)"
+  [[ -n "$bullets" ]] || bullets="- Update workflow files."
+  cat <<EOF
+## Summary
+$title
+
+$bullets
+EOF
+}
+
 DRY=0
 SUMMARY=""
 for arg in "$@"; do
@@ -201,15 +373,7 @@ done
 
 git commit -m "$title"
 git push -u origin HEAD
-files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
-body="$(cat <<EOF
-## Summary
-$title
-
-## Changes
-$files
-EOF
-)"
+body="$(git diff-tree --no-commit-id --name-status -r HEAD | pr_body "$title")"
 url="$(gh pr create --base master --head "$branch" --title "$title" --body "$body")"
 printf '%s\n' "Result: Pull request opened"
 printf '%s\n' "Branch: $branch"

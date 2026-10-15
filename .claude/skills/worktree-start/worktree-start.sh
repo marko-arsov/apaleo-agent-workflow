@@ -15,15 +15,20 @@ APALEO_ONLY=0
 SKILLS_ONLY=0
 AAP_ONLY=0
 BRANCH=""
+EXTRA_WITH=()
 
 usage() {
   cat <<EOF
 Usage: worktree-start.sh <branch> [--from-master]
          [--with-development] [--with-identity] [--with-agent-skills] [--with-angular-api-proxy]
+         [--with <repository>]
          [--apaleo-only] [--agent-skills-only] [--angular-api-proxy-only]
 
 Optional repos attach only when asked for, or when origin/<branch> already exists in the
 parked clone. Use an *-only flag for a branch that does not touch apaleo.
+--with <repository> attaches another apaleo org repository for this branch. Repeat it
+for each one. An existing \$ROOT/<repository> checkout of that repo is the source;
+otherwise the first attach creates a bare mirror at \$ROOT/.repos/<repository>.git.
 EOF
 }
 
@@ -35,6 +40,23 @@ while [[ $# -gt 0 ]]; do
     --with-identity) WITH_ID=1; shift ;;
     --with-agent-skills) WITH_SKILLS=1; shift ;;
     --with-angular-api-proxy) WITH_AAP=1; shift ;;
+    --with)
+      shift
+      [[ $# -gt 0 ]] || die_ask "--with needs a repository name"
+      case "$1" in
+        apaleo) ;;
+        development) WITH_DEV=1 ;;
+        identity) WITH_ID=1 ;;
+        agent-skills) WITH_SKILLS=1 ;;
+        angular-api-proxy) WITH_AAP=1 ;;
+        *)
+          python3 "$PIPELINE_DIR/common.py" valid-extra-name --name "$1" \
+            || die_ask "refusing repository name $1"
+          EXTRA_WITH+=("$1")
+          ;;
+      esac
+      shift
+      ;;
     --apaleo-only) APALEO_ONLY=1; shift ;;
     --agent-skills-only) SKILLS_ONLY=1; shift ;;
     --angular-api-proxy-only) AAP_ONLY=1; shift ;;
@@ -87,7 +109,8 @@ for main in "${FEATURE_REPOS[@]}"; do
 done
 
 ensure_repo() {
-  local main="$1" dest="$2" required="$3"
+  local main="$1" dest="$2" required="$3" source="${4:-}"
+  [[ -n "$source" ]] || source="$ROOT/$main"
   if is_git_checkout "$dest"; then
     local cur
     cur="$(git -C "$dest" branch --show-current)"
@@ -100,26 +123,29 @@ ensure_repo() {
   if [[ -e "$dest" ]]; then
     die_ask "$dest exists but is not a git worktree"
   fi
-  is_git_checkout "$ROOT/$main" || {
+  git -C "$source" rev-parse --git-dir >/dev/null 2>&1 || {
     if [[ "$required" == "1" ]]; then
       die_ask "clone https://github.com/apaleo/$main.git into $ROOT/$main first"
     fi
     echo "$main: skipped (no parked clone)"
     return 0
   }
-  git -C "$ROOT/$main" fetch --prune --quiet origin || true
+  git -C "$source" fetch --prune --quiet origin || true
   if [[ "$FROM_MASTER" == "1" ]]; then
-    if git -C "$ROOT/$main" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    if git -C "$source" show-ref --verify --quiet "refs/heads/$BRANCH"; then
       die_ask "branch $BRANCH already exists in $main — omit --from-master"
     fi
-    git -C "$ROOT/$main" worktree add -b "$BRANCH" "$dest" origin/master
+    local base_ref="origin/master"
+    git -C "$source" show-ref --verify --quiet refs/remotes/origin/master || base_ref="master"
+    git -C "$source" worktree add -b "$BRANCH" "$dest" "$base_ref" \
+      || die_ask "could not create $dest from $base_ref"
     echo "$main: created-from-master $dest $(git -C "$dest" rev-parse --short HEAD)"
     return 0
   fi
-  if git -C "$ROOT/$main" show-ref --verify --quiet "refs/heads/$BRANCH"; then
-    git -C "$ROOT/$main" worktree add "$dest" "$BRANCH"
-  elif git -C "$ROOT/$main" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
-    git -C "$ROOT/$main" worktree add --track -b "$BRANCH" "$dest" "origin/$BRANCH"
+  if git -C "$source" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    git -C "$source" worktree add "$dest" "$BRANCH"
+  elif git -C "$source" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+    git -C "$source" worktree add --track -b "$BRANCH" "$dest" "origin/$BRANCH"
   else
     if [[ "$required" == "1" ]]; then
       die_ask "$main has no branch $BRANCH (pass --from-master to create)"
@@ -128,6 +154,53 @@ ensure_repo() {
     return 0
   fi
   echo "$main: created $dest $(git -C "$dest" rev-parse --short HEAD)"
+}
+
+origin_is_apaleo_repo() {
+  local dest="$1" name="$2" url
+  url="$(git -C "$dest" config --get remote.origin.url 2>/dev/null || true)"
+  url="${url%.git}"
+  [[ "$url" == *":apaleo/$name" || "$url" == */apaleo/"$name" ]]
+}
+
+ensure_extra() {
+  local name="$1" dest source mirror
+  dest="$WT/$name"
+  python3 "$PIPELINE_DIR/common.py" valid-extra-name --name "$name" \
+    || die_ask "refusing repository name $name"
+  if is_git_checkout "$dest"; then
+    local cur
+    cur="$(git -C "$dest" branch --show-current)"
+    [[ "$cur" == "$BRANCH" ]] || die_ask "$dest is on '$cur', expected $BRANCH"
+    python3 "$PIPELINE_DIR/common.py" record-extra --root "$ROOT" --branch "$BRANCH" --name "$name"
+    echo "$name: reused $dest $(git -C "$dest" rev-parse --short HEAD)"
+    return 0
+  fi
+  [[ ! -e "$dest" ]] || die_ask "$dest exists but is not a git worktree"
+  if is_git_checkout "$ROOT/$name"; then
+    origin_is_apaleo_repo "$ROOT/$name" "$name" \
+      || die_ask "$ROOT/$name is not a checkout of apaleo/$name"
+    local cur
+    cur="$(git -C "$ROOT/$name" branch --show-current 2>/dev/null || true)"
+    [[ -z "$cur" || "$cur" == "master" ]] || die_ask "main $name is on '$cur', not master — park it first"
+    [[ -z "$(git -C "$ROOT/$name" status --porcelain --untracked-files=no 2>/dev/null)" ]] \
+      || die_ask "main $name has dirty tracked files"
+    source="$ROOT/$name"
+  else
+    mirror="$ROOT/.repos/$name.git"
+    if [[ ! -d "$mirror" ]]; then
+      gh repo view "apaleo/$name" --json name -q .name >/dev/null 2>&1 \
+        || die_ask "apaleo/$name is not a repository you can see"
+      mkdir -p "$ROOT/.repos"
+      if ! git clone --bare "git@github.com:apaleo/${name}.git" "$mirror"; then
+        rm -rf "$mirror"
+        die_ask "could not mirror apaleo/$name"
+      fi
+    fi
+    source="$mirror"
+  fi
+  ensure_repo "$name" "$dest" 1 "$source"
+  python3 "$PIPELINE_DIR/common.py" record-extra --root "$ROOT" --branch "$BRANCH" --name "$name"
 }
 
 attach_optional_product_repos() {
@@ -181,9 +254,30 @@ else
   elif [[ "$want_aap" == "1" ]]; then
     ensure_repo angular-api-proxy "$WT/angular-api-proxy" 1
   else
-    die_ask "no repo has branch $BRANCH (pass --from-master, or --agent-skills-only / --angular-api-proxy-only with --from-master)"
+    if [[ ${#EXTRA_WITH[@]} -eq 0 ]]; then
+      die_ask "no repo has branch $BRANCH (pass --from-master, or --agent-skills-only / --angular-api-proxy-only with --from-master)"
+    fi
+    echo "apaleo: skipped (no branch)"
   fi
 fi
+
+attach_extra_names() {
+  local name seen=" "
+  for name in "$@"; do
+    [[ -n "$name" ]] || continue
+    case "$seen" in *" $name "*) continue ;; esac
+    seen+="$name "
+    ensure_extra "$name"
+  done
+}
+
+RECORDED=()
+while IFS= read -r recorded_name; do
+  [[ -n "$recorded_name" ]] && RECORDED+=("$recorded_name")
+done < <(python3 "$PIPELINE_DIR/common.py" extra-repos --root "$ROOT" --branch "$BRANCH")
+attach_extra_names "${EXTRA_WITH[@]:-}" "${RECORDED[@]:-}"
+feature_worktree_exists "$WT" \
+  || die_ask "no repo has branch $BRANCH (pass --from-master, or --with <repository>)"
 
 echo "ROOT=$ROOT"
 echo "WT=$WT"

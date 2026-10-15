@@ -13,7 +13,8 @@ $ROOT/                         # workflow checkout; product directories here are
 ├── identity/                  # parked master checkout
 ├── agent-skills/              # parked master checkout (team plugins)
 ├── angular-api-proxy/         # parked master checkout (generated Angular API clients)
-├── worktrees/<branch>/        # all feature code (apaleo, development?, identity?, agent-skills?, angular-api-proxy?)
+├── .repos/<name>.git          # bare mirror of another apaleo org repo, created on first attach
+├── worktrees/<branch>/        # feature code for the parked repos, plus <name> when that branch attaches it
 ├── ai-plans/<branch>/         # complete, revisable plans + mutable evidence
 ├── .claude/                   # linked checkout of the workflow repository
 └── .cursor/                   # editor adapters from that same checkout
@@ -38,6 +39,11 @@ Feature code belongs only under `$ROOT/worktrees/<branch>/`. This directory is t
   needs them (`--with-<repo>`) or when `origin/<branch>` already exists in the parked clone. A branch
   may be `--agent-skills-only` or `--angular-api-proxy-only`. `$ROOT` resolution still depends only
   on `AGENTS.md` + `apaleo/` + `development/`.
+- Any other `apaleo` org repository attaches for one branch with `worktree-start --with <name>`.
+  Confirm the name first. If `$ROOT/<name>` is already a checkout of `apaleo/<name>`, that checkout
+  is the source and stays on `master`. Otherwise the first attach creates `$ROOT/.repos/<name>.git`.
+  Later stages include that checkout only when the branch recorded it in `pipeline.json` `extra_repos`
+  or `worktrees/<branch>/.extra-repos`.
 - Never push to a base branch. Never force-push or use `--force-with-lease`.
 - Default branch: Linear's `gitBranchName`, shaped `<github-login>/<issue-id>-<slug>`. Only
   `/specify` derives a new slug. Current tickets are `sl-<id>` (team Sell); `hc-<id>` branches
