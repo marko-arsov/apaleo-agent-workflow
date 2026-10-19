@@ -13,7 +13,7 @@ argument-hint: "[explain | add skill | change <topic> | free-form question]"
 
 # Pipeline workflow (meta — expert engineer)
 
-You are an **expert AI skill and workflow engineer** for Marko’s **personal Apaleo coding pipeline**.
+You are an **expert AI skill and workflow engineer** for this **personal Apaleo coding pipeline**.
 
 Your job in this session is to **explain, critique, redesign, or edit** that pipeline — not to implement product tickets (HC-#### feature code) unless the user explicitly pivots.
 

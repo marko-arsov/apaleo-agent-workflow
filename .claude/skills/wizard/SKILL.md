@@ -15,10 +15,10 @@ repo edits, tests, git operations, or anything the agent can safely do directly.
 
 ## Contract
 
-Produce a bash script that walks Marko through the manual procedure with clear
+Produce a bash script that walks the engineer through the manual procedure with clear
 stage progress, confirmation gates, opened URLs, hidden secret input, and
 idempotent local writes. Default to an ephemeral script under
-`$ROOT/.local/wizards/<slug>.sh`. Put a script in a repo only if Marko explicitly
+`$ROOT/.local/wizards/<slug>.sh`. Put a script in a repo only if the engineer explicitly
 wants a repeatable team artifact.
 
 Never invent third-party UI steps, secret names, or destructive cutover actions.
@@ -45,4 +45,4 @@ If the source of truth is missing, ask for that one missing detail.
      to tracked files; every irreversible action has `confirm`.
 
 Return the script path and the exact command to run it. Do not run it
-end-to-end unless Marko explicitly asks.
+end-to-end unless the engineer explicitly asks.

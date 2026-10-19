@@ -43,7 +43,7 @@ class PublishWorkflowTests(unittest.TestCase):
         gh.write_text(
             "#!/bin/sh\n: > \"$GH_ARGS_FILE\"\n"
             "while [ $# -gt 0 ]; do printf '%s\\n' \"$1\" >> \"$GH_ARGS_FILE\"; shift; done\n"
-            "printf '%s\\n' 'https://github.com/marko-arsov/apaleo-agent-workflow/pull/1'\n",
+            "printf '%s\\n' 'https://github.com/example-owner/apaleo-agent-workflow/pull/1'\n",
             encoding="utf-8",
         )
         gh.chmod(0o755)
@@ -84,7 +84,7 @@ class PublishWorkflowTests(unittest.TestCase):
         (self.workspace / "apaleo" / "keep.txt").write_text("product\n", encoding="utf-8")
         result = run(self.workspace, "Add a workflow note", env=self.git_env)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("URL: https://github.com/marko-arsov/apaleo-agent-workflow/pull/1", result.stdout)
+        self.assertIn("URL: https://github.com/example-owner/apaleo-agent-workflow/pull/1", result.stdout)
         branch = subprocess.run(
             ["git", "-C", str(self.workspace), "branch", "--show-current"],
             check=True,

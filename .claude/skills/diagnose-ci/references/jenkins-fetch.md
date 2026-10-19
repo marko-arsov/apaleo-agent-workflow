@@ -34,7 +34,7 @@ Branch encoding: `/` in branch names appears as `%252F` in the job path.
 ## Latest build only
 
 ```bash
-JOB="<job-root-without-trailing-build-number>"   # .../job/markoarsov%252Fhc-...
+JOB="<job-root-without-trailing-build-number>"   # .../job/<login>%252Fhc-...
 AUTH=(-u "$JENKINS_USER:$JENKINS_TOKEN" -k)
 
 # metadata — confirm branch + pick build number

@@ -25,7 +25,7 @@ class OpenRiderTests(unittest.TestCase):
     def test_issue_id_opens_apaleo_solution_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            branch = "markoarsov/sl-100-example"
+            branch = "jdoe/sl-100-example"
             apaleo = root / "worktrees" / branch / "apaleo"
             init_repo(root / "apaleo", "master")
             init_repo(apaleo, branch)

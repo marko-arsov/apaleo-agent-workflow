@@ -34,7 +34,7 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["overshoot"])
 
     def test_stacked_plan_diff_excludes_the_base_branch_work(self) -> None:
-        branch = "markoarsov/sl-126-stacked"
+        branch = "jdoe/sl-126-stacked"
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             repo = root / "worktrees" / branch / "apaleo"
@@ -53,7 +53,7 @@ class VerificationTests(unittest.TestCase):
             (repo / "base.txt").write_text("".join(f"{i}\n" for i in range(50)), encoding="utf-8")
             git("add", "-A")
             git("commit", "-qm", "base branch work")
-            git("update-ref", "refs/remotes/origin/markoarsov/sl-125-base", "HEAD")
+            git("update-ref", "refs/remotes/origin/jdoe/sl-125-base", "HEAD")
             (repo / "feature.txt").write_text("one\ntwo\n", encoding="utf-8")
 
             plan = root / "ai-plans" / branch
@@ -76,7 +76,7 @@ class VerificationTests(unittest.TestCase):
                 )
                 (plan / "pipeline.json").write_text(json.dumps(manifest), encoding="utf-8")
 
-            write_manifest("markoarsov/sl-125-base")
+            write_manifest("jdoe/sl-125-base")
             stacked = diff_stats(root, branch)
             self.assertEqual(stacked["paths"], ["apaleo/feature.txt"])
             self.assertEqual(stacked["lines"], 2)
