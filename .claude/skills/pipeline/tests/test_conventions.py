@@ -187,7 +187,7 @@ class ConventionHookTests(unittest.TestCase):
 
     def test_whole_file_write_keeps_a_violation_the_file_already_had(self) -> None:
         handler = "class OldHandler : IAuthorizationHandler {}\n"
-        target = self.root / "worktrees/markoarsov/x/apaleo/src/Legacy/OldHandler.cs"
+        target = self.root / "worktrees/jdoe/x/apaleo/src/Legacy/OldHandler.cs"
         target.parent.mkdir(parents=True)
         target.write_text(handler + "// before\n", encoding="utf-8")
         write = {"tool_name": "Write", "tool_input": {"path": str(target), "contents": handler + "// after\n"}}
@@ -199,7 +199,7 @@ class ConventionHookTests(unittest.TestCase):
         )
 
     def test_whole_file_write_of_a_new_file_is_checked_in_full(self) -> None:
-        target = self.root / "worktrees/markoarsov/x/apaleo/src/New/NewHandler.cs"
+        target = self.root / "worktrees/jdoe/x/apaleo/src/New/NewHandler.cs"
         write = {
             "tool_name": "Write",
             "tool_input": {"path": str(target), "contents": "class NewHandler : IAuthorizationHandler {}"},

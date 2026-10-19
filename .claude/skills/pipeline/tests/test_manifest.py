@@ -83,11 +83,11 @@ class ManifestTests(unittest.TestCase):
         self.assertNotIn("Stacked on", markdown(manifest))
 
     def test_stacked_plan_records_and_renders_its_base_branch(self) -> None:
-        manifest = make_manifest(**{**self._make_kwargs(), "stacked_on": "markoarsov/sl-125-columns"})
-        self.assertEqual(manifest["base_branch"], "markoarsov/sl-125-columns")
-        self.assertEqual(base_branch(manifest), "markoarsov/sl-125-columns")
-        self.assertIn("Stacked on `markoarsov/sl-125-columns`", markdown(manifest))
-        self.assertEqual(runtime_manifest(manifest)["base_branch"], "markoarsov/sl-125-columns")
+        manifest = make_manifest(**{**self._make_kwargs(), "stacked_on": "jdoe/sl-125-columns"})
+        self.assertEqual(manifest["base_branch"], "jdoe/sl-125-columns")
+        self.assertEqual(base_branch(manifest), "jdoe/sl-125-columns")
+        self.assertIn("Stacked on `jdoe/sl-125-columns`", markdown(manifest))
+        self.assertEqual(runtime_manifest(manifest)["base_branch"], "jdoe/sl-125-columns")
 
     def test_base_branch_must_be_a_plain_non_master_branch(self) -> None:
         for bad in ("master", "main", "", "-x", "a..b", "feature/", "x.lock", "has space", 5):
@@ -494,7 +494,7 @@ class ManifestTests(unittest.TestCase):
     def test_latest_versioned_plan_wins_without_changing_branch(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            branch = root / "ai-plans" / "markoarsov" / "hc-42-example"
+            branch = root / "ai-plans" / "jdoe" / "hc-42-example"
             branch.mkdir(parents=True)
             for directory in (branch, branch / "v2"):
                 directory.mkdir(exist_ok=True)
@@ -508,7 +508,7 @@ class ManifestTests(unittest.TestCase):
     def test_incomplete_version_cannot_borrow_contract_files_from_v1(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            branch = root / "ai-plans" / "markoarsov" / "hc-42-example"
+            branch = root / "ai-plans" / "jdoe" / "hc-42-example"
             version = branch / "v2"
             version.mkdir(parents=True)
             for name in (
@@ -526,7 +526,7 @@ class ManifestTests(unittest.TestCase):
     def test_plan_dir_command_returns_latest_version_for_script_stages(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            branch = root / "ai-plans" / "markoarsov" / "hc-42-example"
+            branch = root / "ai-plans" / "jdoe" / "hc-42-example"
             version = branch / "v2"
             version.mkdir(parents=True)
             (version / "prompt.md").write_text("task", encoding="utf-8")

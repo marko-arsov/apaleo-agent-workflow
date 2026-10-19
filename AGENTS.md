@@ -121,5 +121,6 @@ loads `.claude/skills/references/api-endpoint-patterns.md`; authorization loads 
 | Migrations and feature flags | `db-migrations.md`, `feature-flags.md` |
 | API enum wire values | `api-enum-wire-values.md` |
 | PR review and speaking as user | `pr-review.md`, `speak-as-user.md` |
+| Support rotation inquiries | `support-rotation.md` |
 | Security boundary | `security-boundary.md` |
 | Team skills | `team-plugins.md` |

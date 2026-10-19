@@ -210,9 +210,16 @@ generates that SQL from the parked master checkout with the production runbook c
 (`dotnet ef migrations script <last-applied> --output Migration.sql`, no `-i`), then
 `SET statement_timeout = 0;` at the top. It does not apply the script.
 
-`/test-on-staging` is execution-first: it resolves the merged change, exhausts available deployment
-evidence, and runs read-only plus tightly bounded disposable-account browser/API/SQL smoke checks
-without an option-menu pause. It uses browser control when the current host provides it and leaves
+`/test-on-staging` answers "is it safe to deploy to production?" for one or more merged changes
+(issues, PRs, or branches in any mix). It reads the Jenkins master pipelines for those commits
+(`references/jenkins-readonly.sh`, GET only), proves the staging deployment, lists what else ships
+from the production commit onward, and runs one to three focused smoke checks per change, never the
+E2E suite. It ends with one verdict: safe to deploy (with the exact `Deployment/Core` input), quick
+fix first, revert, wait, or blocked. It runs read-only plus tightly bounded disposable-account
+browser/API/SQL checks without an option-menu pause. API checks
+and test data go through the Apaleo MCP first, then `references/staging-api.sh`; automatic writes
+happen only on the configured test account. Several targets share readiness probes, fixtures, and one
+cleanup ledger, and get an integration check where they touch the same thing. It uses browser control when the current host provides it and leaves
 only sign-in/MFA, high-impact shared-state changes, missing access, or genuine human judgment as one
 short step-by-step handoff. Reachability, deployment freshness, and ticket-specific verification are
 reported separately; only complete observed proof is **PASS**.
@@ -223,6 +230,29 @@ Mechanical skills use their scripts as the source of truth but translate routine
 a concise, decision-oriented Markdown result. Raw stdout is available on request and brief error
 excerpts remain appropriate when they explain a failure. Review skills render their prescribed
 orientation and findings as normal Markdown, not terminal transcripts.
+
+## Support rotation
+
+`/support-rotation <Slack thread | Linear issue>` is the local second pass on one
+`#product-inquiries` inquiry. The cloud agent (`rotation-processor`, Cursor Cloud, started by n8n)
+does the first static pass and posts an Outcome on the Linear issue. The local skill:
+
+1. reads the thread and issue, classifies the cloud state (Outcome, in progress, missed, no summon),
+   and reads that team's memory notes read-only;
+2. writes competing hypotheses from the thread before reading the Outcome;
+3. verifies the Outcome as a claim ledger (re-read cited code on `origin/master`, arithmetic,
+   flags, recent history, a second screen computing the same number);
+4. separates the remaining hypotheses with the cheapest decisive step: a precise question, the flag
+   state, or a staging reproduction with a control (Apaleo MCP first, then `staging-api.sh`);
+5. ends with next steps: the exact questions to post when information is missing, a "tell your
+   team lead now" call with a draft message when it is urgent, the reply with fix steps when the
+   cause is known, and an offer to create a fix issue and an improvement issue in Linear;
+6. drafts the Slack reply, lead or owner messages, a Linear `## Verification` plus `## Feedback`
+   comment, the issues, and a corrected team-memory note.
+
+Reads and straightforward reversible writes on the configured test account need no confirmation; shared
+configuration, flags, money, deletions, or uncertain cleanup do. Nothing is posted, moved, or pushed
+without a yes. Production is never written. Details: `references/support-rotation.md`.
 
 ## Cost classification
 
@@ -258,6 +288,35 @@ No item adds a recurring model call.
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-10-19: Added `/support-rotation`, the local verifier for the cloud support agent. It
+  reuses the agent's Outcome and team memory instead of repeating them, checks each claim, and
+  spends its effort on staging reproduction, flag state, and targeted questions. Linear comments
+  (`## Verification`, `## Feedback`) and the `data/engineering-tech-support` memory notes are the
+  shared record. `staging-api.sh` reads untracked client credentials and never prints them. Per-engineer
+  values (test account, property, database user) live in the untracked `.local/user-config.json`
+  (template `references/user-config.example.json`); the repository holds no personal setup, and
+  `staging-api.sh` refuses writes outside the configured test account. `/support-rotation` tells
+  Zendesk inquiries (bot-posted, Dispatcher summon, the named CS agent as the asker, follow-ups as
+  bot messages) from direct ones and addresses its reply to the right person.
+
+- 2026-10-19: `/test-on-staging` accepts several issues, PRs, or branches in one run and uses the
+  Apaleo MCP, then the shared `references/staging-api.sh`, for API checks and test data. Automatic
+  reversible writes are limited to the configured test account (`staging.testAccount`). Multi-target runs share
+  readiness and cleanup, add integration checks, report a per-target table with the worst state as
+  the overall result, and write a batch summary under `.local/staging-smoke/`.
+
+- 2026-10-19: `/test-on-staging` now decides production readiness: Jenkins master pipeline per
+  merge (first and latest build), staging freshness, the commit range a production deploy would
+  ship, a small smoke budget instead of E2E flows, and one verdict (safe, quick fix, revert, wait,
+  blocked). `/support-rotation` ends with explicit next steps: thread questions, team-lead
+  escalation criteria, the reply with fix steps, and offered fix and improvement issues.
+
+- 2026-10-19: Read-only staging SQL in `/test-on-staging` and `/support-rotation` goes through
+  `references/staging-sql.sh`: `psql` with an IAM token for the engineer's database user, a statement
+  allowlist, `default_transaction_read_only=on`, and a read-only transaction. It needs the staging
+  VPN and reports a clear exit code when it is down. The Rider MCP (read-only data source, SQL
+  tools allowed without a prompt) is the fallback, because Rider refused MCP queries in testing.
 
 - 2026-10-15: `/publish-workflow` pull request bodies are a few short bullets for the
   commands, pipeline, tests, and docs that changed.

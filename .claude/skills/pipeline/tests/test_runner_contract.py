@@ -348,7 +348,7 @@ class RunnerContractTests(unittest.TestCase):
             session_recap = runner.recap(
                 run_dir,
                 "HC-42",
-                "markoarsov/hc-42",
+                "jdoe/hc-42",
                 manifest,
                 [],
                 "WAITING_FOR_INPUT",
@@ -359,7 +359,7 @@ class RunnerContractTests(unittest.TestCase):
             local_recap = runner.recap(
                 run_dir,
                 "HC-42",
-                "markoarsov/hc-42",
+                "jdoe/hc-42",
                 manifest,
                 [],
                 "WAITING_FOR_INPUT",
@@ -413,7 +413,7 @@ class RunnerContractTests(unittest.TestCase):
             "HC-3333",
             "hc3333",
             "c3333",
-            "markoarsov/hc-3333-add-calendar-event-fork-endpoint",
+            "jdoe/hc-3333-add-calendar-event-fork-endpoint",
         ):
             with self.subTest(value=value):
                 self.assertEqual(runner.canonical_task(value), "HC-3333")
@@ -612,10 +612,10 @@ class RunnerContractTests(unittest.TestCase):
     def test_recovery_packet_is_handed_to_fresh_retry_but_not_review(self) -> None:
         packet = Path("/tmp/recovery.json")
         implement = runner.stage_context(
-            "implement", "HC-42", "markoarsov/hc-42", Path("/tmp/plan"), [packet]
+            "implement", "HC-42", "jdoe/hc-42", Path("/tmp/plan"), [packet]
         )
         review = runner.stage_context(
-            "review", "HC-42", "markoarsov/hc-42", Path("/tmp/plan"), [packet]
+            "review", "HC-42", "jdoe/hc-42", Path("/tmp/plan"), [packet]
         )
         self.assertIn(str(packet), implement)
         self.assertNotIn(str(packet), review)
@@ -632,7 +632,7 @@ class RunnerContractTests(unittest.TestCase):
             runner, "git", side_effect=fake_git
         ) as git, patch.object(runner, "task_base_branch", return_value="master"):
             self.assertEqual(
-                runner.repositories_with_base_diff("markoarsov/hc-42"),
+                runner.repositories_with_base_diff("jdoe/hc-42"),
                 {"apaleo": repos["apaleo"]},
             )
         self.assertIn("origin/master...HEAD", git.call_args_list[0].args)
@@ -642,9 +642,9 @@ class RunnerContractTests(unittest.TestCase):
         completed = subprocess.CompletedProcess(["git"], 1, "", "")
         with patch.object(runner, "worktrees", return_value=repos), patch.object(
             runner, "git", return_value=completed
-        ) as git, patch.object(runner, "task_base_branch", return_value="markoarsov/sl-125"):
-            self.assertEqual(runner.repositories_with_base_diff("markoarsov/sl-126"), repos)
-        self.assertIn("origin/markoarsov/sl-125...HEAD", git.call_args.args)
+        ) as git, patch.object(runner, "task_base_branch", return_value="jdoe/sl-125"):
+            self.assertEqual(runner.repositories_with_base_diff("jdoe/sl-126"), repos)
+        self.assertIn("origin/jdoe/sl-125...HEAD", git.call_args.args)
 
     def test_preflight_sync_of_a_stacked_plan_merges_its_base_branch_not_master(self) -> None:
         repos = {"apaleo": Path("/tmp/apaleo")}
@@ -659,11 +659,11 @@ class RunnerContractTests(unittest.TestCase):
         with patch.object(runner, "worktrees", return_value=repos), patch.object(
             runner, "dirty_paths", return_value=[]
         ), patch.object(runner, "git", side_effect=fake_git), patch.object(
-            runner, "task_base_branch", return_value="markoarsov/sl-125"
+            runner, "task_base_branch", return_value="jdoe/sl-125"
         ):
-            runner.sync_master("markoarsov/sl-126", reporter)
-        self.assertIn(("fetch", "--prune", "origin", "markoarsov/sl-125"), calls)
-        self.assertIn(("merge", "--no-edit", "origin/markoarsov/sl-125"), calls)
+            runner.sync_master("jdoe/sl-126", reporter)
+        self.assertIn(("fetch", "--prune", "origin", "jdoe/sl-125"), calls)
+        self.assertIn(("merge", "--no-edit", "origin/jdoe/sl-125"), calls)
         self.assertFalse(any("origin/master" in arg for call in calls for arg in call))
 
 

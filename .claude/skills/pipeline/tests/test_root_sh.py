@@ -14,7 +14,7 @@ class RootShTests(unittest.TestCase):
     def test_issue_id_ignores_repo_named_source_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            branch = "markoarsov/sl-100-example"
+            branch = "jdoe/sl-100-example"
             development = root / "worktrees" / branch / "development"
             (development / ".git").mkdir(parents=True)
             (development / "apaleo").mkdir()
