@@ -40,7 +40,11 @@ Manual after draft PR
   /address-pr-comments --bugbot        Cursor Bugbot loop; always restore draft
   /address-pr-comments --draft-bugbot-replies
   /diagnose-ci                         read-only diagnosis, then confirmed fix
-  /test-on-staging                     autonomous post-merge smoke; minimal human handoff
+  /test-on-staging [ids|PRs…]          Jenkins + staging + focused smoke → safe for prod / quick fix / revert
+
+Support rotation
+----------------
+  /support-rotation <thread|HC-id>     verify the cloud Outcome, reproduce, then next steps: ask, escalate, reply, issue
 
 Utilities
 ---------

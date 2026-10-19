@@ -107,5 +107,11 @@ Use `/address-pr-comments`, `/diagnose-ci`, manual `/test-and-fix`, then `/commi
 needed. `/test-on-staging` remains post-merge. Nothing posts, resolves, approves, requests review,
 or merges as you without explicit approval.
 
+## 7. Support rotation
+
+`/support-rotation` takes a `#product-inquiries` thread or the cloud agent's Linear issue. It does a
+short blind pass, verifies the cloud Outcome as a claim ledger, then adds staging reproduction,
+flag state, and history. A defect that needs code goes to `/specify` like any bugfix.
+
 See [WORKFLOW.md](WORKFLOW.md) for policy and [pipeline/README.md](pipeline/README.md) for runner
 flags.

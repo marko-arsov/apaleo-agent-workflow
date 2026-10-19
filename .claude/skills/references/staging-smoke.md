@@ -20,6 +20,37 @@ unambiguous sessions or profiles; never discover, print, or persist secrets.
 The UI/API are public endpoints. VPN is normally needed for Jenkins/AWS operational surfaces and DB
 access, not for opening the app.
 
+## API surfaces: MCP, then helper
+
+For API checks and test-data setup, use the first surface that covers the operation:
+
+1. **Apaleo MCP** (staging). Call `GetCurrentAccount` first and record the account code. In gateway
+   mode only `search_tools` and `get_schema` are listed: discover the operation, read its schema,
+   then call it. Prefer the MCP: it holds no local secret and its schemas cost few tokens.
+2. **`$ROOT/.claude/skills/references/staging-api.sh`** for endpoints the MCP does not expose
+   (for example `v0-nsfw` routes) or when a response field the MCP drops is needed.
+
+   ```bash
+   staging-api.sh whoami                      # account and claims, never the token
+   staging-api.sh GET  '/booking/v1/blocks/BER-X?expand=timeSlices'
+   staging-api.sh PUT  /booking/v1/block-actions/BER-X/amend '<json>'
+   staging-api.sh logout                      # delete the cached token
+   ```
+
+   It uses the client-credentials flow. Credentials, first match wins:
+   `APALEO_STAGING_CLIENT_ID` + `APALEO_STAGING_CLIENT_SECRET`, or
+   `$ROOT/.local/staging-api/staging-client.json` with `clientId` and `clientSecret` (mode 600,
+   untracked). The token is cached at `$ROOT/.local/staging-api/.token`. The body goes to stdout,
+   `HTTP <code>` to stderr, and it exits 1 on a status of 400 or above.
+3. **curl with an existing token**, then the browser, as described below.
+
+**Test account.** Marko's disposable staging account is `ZGMD` (Trial, property `BER` and others)
+unless he names another. Both the MCP and the helper client are bound to it. Automatic reversible
+writes are allowed only when the active account is that test account. Any other account is
+read-only unless Marko confirms. When a check needs data the test account lacks (a country,
+a fiscal setup, a flag state), create it there under the reversible-data rules, or name the
+missing setup in one checkpoint.
+
 ## Non-negotiable boundaries
 
 - Do not run `npm test`, `npm run test:file`, or Jest with `-e staging` / `-e production`. Shared
@@ -42,10 +73,11 @@ Check the current host before assigning work to the user.
 | Terminal/GitHub | Run the inspection directly; summarize useful evidence instead of pasting stdout. |
 | Browser/computer control | Open the staging URL, reuse the existing session, navigate, inspect, and capture evidence. |
 | Login/MFA/CAPTCHA | Navigate to the prompt, ask the user to complete only that prompt, then resume. |
+| Apaleo MCP / `staging-api.sh` | Check the account first; run API checks and test-data setup directly. |
 | Existing Bearer token | Check presence without echoing it; make the scoped request and redact sensitive output. |
 | Missing token | Give one secure local setup step; never ask for the token in chat. |
-| Existing staging DB profile/session | Run focused read-only SQL directly. |
-| Missing/ambiguous DB route | State the exact connection/profile needed; do not guess a host, database, or password. |
+| Staging VPN connected (`staging-sql.sh --check` passes) | Run focused read-only SQL directly ("Read-only staging SQL"). |
+| VPN down, or helper unavailable | Ask once for the VPN; fall back to the Rider MCP; never guess a host, database, or password. |
 | Subjective visual/business judgment | Capture what can be captured, then ask one precise question with Pass/Fail criteria. |
 
 Browser testing is agent work whenever browser automation is available. Swagger is a discovery or
@@ -74,7 +106,12 @@ only within the already authorized boundary, and do not try more mutation-capabl
 
 Use the strongest available evidence, in order:
 
-1. A deployment record names the merge SHA or a descendant SHA for the affected service.
+1. A deployment record names the merge SHA or a descendant SHA for the affected service. The
+   Jenkins master pipeline is that record: `references/jenkins-readonly.sh build-for <repo> <sha>`
+   and `builds <repo>` show which green master build (each one deploys to staging) contains the
+   commit. Each build checks out the pipeline helpers from `development` as well; the helper picks
+   the checkout of the requested repository. Production versions come from `prod <param>`
+   (`Deployment/Core`, deployed by hand).
 2. A repository-confirmed version/build endpoint or response header identifies a deployed revision;
    verify ancestry with `git merge-base --is-ancestor <merge-sha> <deployed-sha>` when both are Git
    commits.
@@ -108,10 +145,11 @@ and curl. If the API health path remains unavailable, do not run writes.
 
 Prefer, in order:
 
-1. an existing authenticated browser session;
-2. an existing shell token or approved local API client profile;
-3. user sign-in/MFA takeover in the opened browser;
-4. one local secure-token setup step.
+1. the Apaleo MCP session, or `staging-api.sh` with its untracked client file;
+2. an existing authenticated browser session;
+3. an existing shell token or approved local API client profile;
+4. user sign-in/MFA takeover in the opened browser;
+5. one local secure-token setup step.
 
 Check only whether a token exists; never print it. If the user must populate one in a shell, instruct
 them to use a silent prompt rather than paste it into chat or a command saved in history:
@@ -126,8 +164,38 @@ never invent a client secret.
 
 ## Read-only staging SQL
 
-Use an already configured staging-core connection/profile. Do not put its value on the command line
-or in evidence. Execute the focused query inside a server-enforced read-only transaction and roll it
+**Primary route: `$ROOT/.claude/skills/references/staging-sql.sh`.** It connects to the staging core
+cluster as Marko's IAM database user (`marko_arsov`, derived from the AWS identity) with a
+15-minute IAM token, and never prints the token. Read-only is enforced three times: the statement
+must start with `SELECT`, `WITH`, `EXPLAIN`, `SHOW`, `TABLE`, or `VALUES` (one statement per call);
+the session sets `default_transaction_read_only=on`; and the query runs inside
+`BEGIN TRANSACTION READ ONLY … ROLLBACK`. Output is CSV with a header row.
+
+```bash
+staging-sql.sh --check                                   # VPN, token, login, read-only session
+staging-sql.sh 'SELECT "EntityId", "Status" FROM "Reservation"."Block" WHERE … LIMIT 20'
+staging-sql.sh -f query.sql
+```
+
+Exit codes: `0` ok, `1` query error, `2` refused or usage, `3` network, `4` authentication.
+
+- Exit `3` means the private cluster is unreachable: ask Marko once to connect the **staging VPN**
+  (AWS VPN Client), then retry once.
+- Exit `4` means the AWS CLI identity or the IAM database user is missing; name it and stop the SQL
+  check.
+- It needs `psql` (`brew install libpq`; the helper finds the keg-only binary itself).
+
+**Fallback: the Rider MCP**, only when the helper cannot run (no `psql`, no AWS CLI). Rider's
+staging data source uses the same IAM user with its **Read-only** option on;
+`list_database_connections`, `test_database_connection`, `execute_sql_query`, and
+`fetch_query_result` run without a prompt in Claude Code and the Cursor CLI. Use only a connection
+whose name contains `apaleo-staging-aurora-cluster` and whose `readOnly` is `true`. If Rider is not
+open, ask once whether to run `/open-rider`, then continue. Rider has been seen to refuse every MCP
+query (`User rejected query.`) even with a passing connection test; then mark the SQL check
+**NOT RUN**, tell Marko once, and continue with the other surfaces. Do not loop.
+
+Do not put connection details or tokens on the command line or in evidence. With any route other
+than the helper, run the focused query inside a server-enforced read-only transaction and roll it
 back even though it should not write:
 
 ```sql
@@ -213,9 +281,26 @@ path or copyable command/body, placeholders defined once, and bold one-line **Pa
 Do not show a generic option menu, repeat already completed checks, or bury the single needed action
 under background explanation.
 
+## Several targets in one run
+
+When the request names more than one issue or PR:
+
+- Run the readiness probes once and reuse them for every target.
+- Prove freshness per affected service; one deploy record can cover several merges in the same
+  service when the deployed SHA descends from each merge SHA.
+- Build the claim map per target, then add one **integration check** when targets touch the same
+  entity, endpoint, screen, or flag, because two individually passing changes can still conflict.
+- Share disposable fixtures where possible and keep one cleanup ledger for the whole run.
+- Each target gets its own state. The run's overall state is the worst one, in the order
+  FAIL > BLOCKED > WAIT > PARTIAL > PASS.
+
 ## Evidence artifact
 
-Save `ai-plans/<branch>/staging-smoke.md` (or the next numbered file for a later completed run) with:
+Save `ai-plans/<branch>/staging-smoke.md` (or the next numbered file for a later completed run).
+A target with no plan of Marko's (someone else's PR, an issue without a branch here) is saved under
+`$ROOT/.local/staging-smoke/<repo>-<pr or issue>/staging-smoke.md`. A multi-target run also writes
+`$ROOT/.local/staging-smoke/<UTC>-batch.md` with the per-target table, the integration checks, and the
+shared cleanup ledger, and links each target artifact. Each artifact contains:
 
 1. target, UTC time, PRs, merge SHAs, and affected services;
 2. deployment evidence and readiness probe summary;
