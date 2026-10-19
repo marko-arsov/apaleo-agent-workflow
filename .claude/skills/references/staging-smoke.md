@@ -110,8 +110,8 @@ Run these without a confirmation menu after the user asks for a staging smoke:
 - authenticated GET/HEAD through an existing session or token;
 - read-only browser navigation and inspection;
 - focused `SELECT`/`SHOW`/catalog queries in a server-enforced read-only transaction;
-- low-risk reversible test writes in an unmistakable disposable account/property when the skill's
-  autonomy conditions are all satisfied;
+- test writes in the engineer's `staging.testAccount` that affect nobody else ("Reversible staging
+  data" below);
 - creation of local smoke evidence.
 
 Group everything else into one checkpoint after the safe work. Show the exact method/UI action,
@@ -246,19 +246,32 @@ not recreate the full local automated suite.
 
 ## Reversible staging data
 
-For an automatically allowed write, all autonomy conditions in the skill must hold. Use a unique
-marker such as `staging-smoke-SL-29-20260917T140500Z`. Before sending the write, persist a sanitized
-**pending cleanup** entry in the current smoke artifact with the target, marker, and exact reversal.
-Afterward, verify the record is gone or restored and mark cleanup complete. Do not automate writes
-involving:
+Staging is for testing, and `staging.testAccount` belongs to the engineer alone. The line is whether
+anyone else is affected, not how big the write is. Inside that account any test is allowed without
+asking: creating, amending, cancelling, and deleting test data (services, bookings, folios, charges,
+routings, payments recorded on test folios, invoices), night audit on a test property, and the
+account's own property or feature settings. Prefer a property whose settings already fit over
+changing a setting, and leave email addresses off test bookings so no confirmation mail goes out.
 
-- real or customer-like accounts/properties;
-- payments, invoices, fiscalization, financial posting, or irreversible workflows;
-- outbound emails, webhooks, partner/integration calls, or third-party side effects;
-- users, roles, permissions, OAuth clients/secrets, or shared configuration;
-- bulk operations, migration/repair jobs, or unclear cascading behavior.
+Use a unique marker such as `staging-smoke-SL-29-20260917T140500Z`. Before sending the write, persist
+a sanitized **pending cleanup** entry in the current artifact with the target, marker, before-state,
+and exact reversal. Afterward, verify the record is gone or restored and mark cleanup complete.
+Remove services booked on a test reservation before cancelling it: a service that a cancelled
+reservation still references cannot be deleted. When the API refuses a delete, neutralise the
+leftover (take it off sale, prefix its name `ZZ disposable <ISSUE>`) and list it in the report.
 
-Those require one exact checkpoint, and some may be better left as a manual judgment step.
+Ask once, with the exact actions, before anything that could reach or affect other people:
+
+- another account, or real or customer-like data;
+- staging-wide configuration or feature flags (ConfigCat is shared; the engineer changes it);
+- outbound emails, SMS, webhooks, or real partner/integration calls, including payment-provider
+  transactions (card authorisations, captures, refunds) and fiscalization submissions, even in
+  test mode; payments recorded directly on a test folio are fine;
+- users, roles, permissions, or OAuth clients/secrets;
+- bulk or load tests that could slow shared staging, or migration/repair jobs;
+- a step whose cleanup is impossible.
+
+Never write to production, and never enter real payment details or credentials.
 
 On resume or rerun, read the latest smoke artifact and resolve pending cleanup before making another
 write. Preserve still-current results and continue from the first unfinished check instead of

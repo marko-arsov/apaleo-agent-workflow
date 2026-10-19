@@ -115,12 +115,82 @@ class PublishWorkflowTests(unittest.TestCase):
         ).stdout.strip()
         self.assertEqual(branch, "master")
 
-    def test_refuses_when_head_is_not_origin_master(self) -> None:
+    def test_publishes_local_commits_and_edits_from_another_branch(self) -> None:
         self.commit("AGENTS.md", "Local commit")
+        subprocess.run(["git", "-C", str(self.workspace), "checkout", "-b", "feature"], check=True)
         (self.workspace / "README.md").write_text("workflow\n", encoding="utf-8")
+        master = subprocess.run(
+            ["git", "-C", str(self.workspace), "rev-parse", "master"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
         result = run(self.workspace, "Add a workflow note", env=self.git_env)
-        self.assertEqual(result.returncode, 2, result.stdout)
-        self.assertIn("ASK: HEAD is not origin/master", result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        names = subprocess.run(
+            ["git", "-C", str(self.workspace), "diff", "--name-only", "origin/master...HEAD"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout
+        self.assertIn("README.md", names)
+        self.assertIn("AGENTS.md", names)
+        self.assertEqual(
+            subprocess.run(
+                ["git", "-C", str(self.workspace), "rev-parse", "master"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip(),
+            master,
+        )
+        self.assertEqual(
+            subprocess.run(
+                ["git", "-C", str(self.workspace), "rev-parse", "feature"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip(),
+            master,
+        )
+
+    def test_asks_when_the_branch_does_not_apply_onto_origin_master(self) -> None:
+        self.commit("README.md", "On master")
+        subprocess.run(
+            ["git", "-C", str(self.workspace), "push", "origin", "master"],
+            check=True,
+            capture_output=True,
+            env={**os.environ, **self.git_env},
+        )
+        subprocess.run(["git", "-C", str(self.workspace), "checkout", "-b", "feature"], check=True)
+        self.commit("README.md", "Feature edit")
+        subprocess.run(["git", "-C", str(self.workspace), "checkout", "master"], check=True)
+        self.commit("README.md", "Updated master")
+        subprocess.run(
+            ["git", "-C", str(self.workspace), "push", "origin", "master"],
+            check=True,
+            capture_output=True,
+            env={**os.environ, **self.git_env},
+        )
+        subprocess.run(["git", "-C", str(self.workspace), "checkout", "feature"], check=True)
+        result = run(self.workspace, "Add a workflow note", env=self.git_env)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("ASK: could not replay the current branch onto origin/master", result.stderr)
+        branch = subprocess.run(
+            ["git", "-C", str(self.workspace), "branch", "--show-current"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
+        self.assertEqual(branch, "feature")
+        branches = subprocess.run(
+            ["git", "-C", str(self.workspace), "branch"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout
+        self.assertNotIn("workflow/add-a-workflow-note", branches)
+        self.assertEqual((self.workspace / "README.md").read_text(encoding="utf-8"), "Feature edit\n")
 
     def test_derives_a_summary_when_omitted(self) -> None:
         skill = self.workspace / ".claude" / "skills" / "publish-workflow"

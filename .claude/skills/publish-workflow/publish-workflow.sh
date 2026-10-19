@@ -9,8 +9,9 @@ usage() {
   cat <<'EOF'
 Usage: publish-workflow.sh [--dry-run] ["short summary"]
 
-Commit uncommitted workflow files on a new branch from origin/master, push
-that branch, and open a pull request. When the summary is omitted, it is
+Commit workflow edits on a new branch from origin/master, push that branch,
+and open a pull request. Uncommitted edits and commits that are not on
+origin/master move onto that branch. When the summary is omitted, it is
 derived from the changed files. Product repositories, worktrees, plans, and
 run state are refused. Nothing is committed on master, and nothing is force-pushed.
 EOF
@@ -299,23 +300,31 @@ esac
 git fetch origin master
 head="$(git rev-parse HEAD)"
 origin_master="$(git rev-parse origin/master)"
-[[ "$head" == "$origin_master" ]] || die_ask "HEAD is not origin/master. This publishes uncommitted edits onto a new branch from origin/master."
+start_branch="$(git branch --show-current)"
+
+committed=()
+while IFS= read -r path; do
+  [[ -n "$path" ]] && committed+=("$path")
+done < <(git diff --name-only "$origin_master...$head")
 
 changes=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && changes+=("$line")
 done < <(git status --porcelain -uall)
-(( ${#changes[@]} > 0 )) || {
-  printf '%s\n' "Result: Nothing to publish"
-  exit 0
-}
 
 paths=()
-for line in "${changes[@]}"; do
+for path in "${committed[@]:-}"; do
+  paths+=("$path")
+done
+for line in "${changes[@]:-}"; do
   path="${line:3}"
   [[ "$path" == *" -> "* ]] && path="${path##* -> }"
   paths+=("$path")
 done
+(( ${#paths[@]} > 0 )) || {
+  printf '%s\n' "Result: Nothing to publish"
+  exit 0
+}
 
 forbidden_path() {
   local path="$1"
@@ -353,27 +362,71 @@ if [[ "$DRY" == 1 ]]; then
   printf '%s\n' "Result: Dry run"
   printf '%s\n' "Branch: $branch"
   printf '%s\n' "Summary: $title"
-  printf '%s\n' "${changes[@]}"
+  printf '%s\n' "${paths[@]}"
   exit 0
 fi
 
-git checkout -b "$branch"
-git add -A
-staged=()
-while IFS= read -r path; do
-  [[ -n "$path" ]] && staged+=("$path")
-done < <(git diff --cached --name-only)
-(( ${#staged[@]} > 0 )) || die_ask "nothing staged after git add"
-for path in "${staged[@]}"; do
-  if forbidden_path "$path"; then
-    git reset -q
-    die_ask "refusing to publish $path"
+stashed=0
+created_branch=0
+abort_publish() {
+  git cherry-pick --abort >/dev/null 2>&1 || true
+  if [[ "$created_branch" == 1 ]]; then
+    if [[ -n "$start_branch" ]]; then
+      git checkout -f "$start_branch" >/dev/null 2>&1 || true
+    else
+      git checkout -f "$head" >/dev/null 2>&1 || true
+    fi
+    git branch -D "$branch" >/dev/null 2>&1 || true
   fi
-done
+  if [[ "$stashed" == 1 ]]; then
+    git stash pop >/dev/null 2>&1 || true
+  fi
+  die_ask "$1"
+}
 
-git commit -m "$title"
+if [[ "$head" != "$origin_master" && ${#changes[@]} -gt 0 ]]; then
+  git stash push -u -m "publish-workflow" >/dev/null
+  stashed=1
+fi
+if ! git checkout -b "$branch" origin/master >/dev/null; then
+  abort_publish "could not start $branch from origin/master"
+fi
+created_branch=1
+if [[ "$head" != "$origin_master" && ${#committed[@]} -gt 0 ]]; then
+  revs=()
+  while IFS= read -r rev; do
+    [[ -n "$rev" ]] && revs+=("$rev")
+  done < <(git rev-list --reverse "${origin_master}..${head}")
+  if [[ ${#revs[@]} -gt 0 ]] && ! git cherry-pick "${revs[@]}" >/dev/null; then
+    abort_publish "could not replay the current branch onto origin/master"
+  fi
+fi
+if [[ "$stashed" == 1 ]] && ! git stash pop >/dev/null; then
+  abort_publish "could not apply uncommitted edits onto origin/master"
+fi
+stashed=0
+
+if [[ ${#changes[@]} -gt 0 ]]; then
+  git add -A
+  staged=()
+  while IFS= read -r path; do
+    [[ -n "$path" ]] && staged+=("$path")
+  done < <(git diff --cached --name-only)
+  (( ${#staged[@]} > 0 )) || die_ask "nothing staged after git add"
+  for path in "${staged[@]}"; do
+    if forbidden_path "$path"; then
+      git reset -q
+      die_ask "refusing to publish $path"
+    fi
+  done
+  git commit -m "$title"
+fi
+if [[ "$(git rev-list --count "$origin_master..HEAD")" == 0 ]]; then
+  abort_publish "nothing to publish"
+fi
+
 git push -u origin HEAD
-body="$(git diff-tree --no-commit-id --name-status -r HEAD | pr_body "$title")"
+body="$(git diff --name-status "$origin_master...HEAD" | pr_body "$title")"
 url="$(gh pr create --base master --head "$branch" --title "$title" --body "$body")"
 printf '%s\n' "Result: Pull request opened"
 printf '%s\n' "Branch: $branch"

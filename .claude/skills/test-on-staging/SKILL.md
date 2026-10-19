@@ -47,17 +47,18 @@ A direct request to run `/test-on-staging` authorizes:
 - authenticated read-only HTTP requests and read-only staging SQL when an existing unambiguous
   session/profile is available;
 - browser navigation and read-only UI inspection in an existing session;
-- low-risk, reversible test writes only when all of these are true: the proof requires the write,
-  the target is an unmistakable DEMO/test account or property, the data gets a unique smoke marker,
-  no money/PII/external communication/security/admin/shared configuration is involved, and cleanup
-  is known and verified;
+- any test inside the engineer's `staging.testAccount` that affects nobody else, under the
+  test-account rules in `staging-smoke.md` ("Reversible staging data"): test bookings, charges,
+  payments on test folios, invoices, night audit on a test property, and that account's own
+  settings, each with a unique smoke marker and a pending cleanup entry recorded first;
 - writing the local `staging-smoke.md` evidence artifact.
 
-Do not pause for an option menu or confirmation for those actions. Before anything outside that
-boundary, finish the safe work and ask **once** with the exact action set, target, side effects,
-cleanup, and reason. Always require that checkpoint for destructive operations, shared feature-flag
-or configuration changes, real/customer-like accounts, payments, emails/webhooks/external
-integrations, permission changes, or uncertain cleanup. Never mutate the staging database.
+Do not pause for an option menu or confirmation for those actions. Before anything that could reach
+or affect other people, finish the safe work and ask **once** with the exact action set, target,
+side effects, cleanup, and reason: another account, staging-wide configuration or feature flags,
+emails/SMS/webhooks/real partner integrations, users/roles/permissions/OAuth clients, load on shared
+staging, or a step that cannot be cleaned up. Never mutate the staging database directly, and never
+write to production.
 
 If the user requested “instructions only”, do not perform authenticated or mutating checks; public
 readiness probes and local evidence inspection remain safe unless they also opted out of those.
