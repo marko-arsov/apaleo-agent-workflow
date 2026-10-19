@@ -13,7 +13,8 @@
 # Environment (all optional):
 #   STAGING_DB_HOST  default apaleo-staging-aurora-cluster.cluster-ck4y76z3d9vq.eu-west-1.rds.amazonaws.com
 #   STAGING_DB_NAME  default apaleo
-#   STAGING_DB_USER  default: the IAM user name with "." replaced by "_" (marko.arsov -> marko_arsov)
+#   STAGING_DB_USER  default: staging.dbUser from the per-user config (user-config.sh), else the
+#                    IAM user name with "." replaced by "_" (first.last -> first_last)
 #   AWS_PROFILE      AWS CLI profile for the staging account (default profile when unset)
 #
 # Exit codes: 0 ok, 1 query error, 2 usage, 3 network/VPN, 4 authentication.
@@ -24,7 +25,7 @@ DB="${STAGING_DB_NAME:-apaleo}"
 PORT=5432
 REGION=eu-west-1
 
-usage() { sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 PSQL="$(command -v psql 2>/dev/null || true)"
 if [[ -z "$PSQL" ]] && command -v brew >/dev/null 2>&1; then
@@ -59,6 +60,9 @@ if ! nc -z -G 5 "$HOST" "$PORT" >/dev/null 2>&1; then
 fi
 
 USER_NAME="${STAGING_DB_USER:-}"
+if [[ -z "$USER_NAME" ]]; then
+  USER_NAME="$("$(dirname "${BASH_SOURCE[0]}")/user-config.sh" get staging.dbUser 2>/dev/null || true)"
+fi
 if [[ -z "$USER_NAME" ]]; then
   arn="$(aws sts get-caller-identity --query Arn --output text 2>/dev/null || true)"
   [[ -n "$arn" ]] || { echo "AWS CLI is not authenticated for the staging account." >&2; exit 4; }

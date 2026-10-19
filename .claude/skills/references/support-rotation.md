@@ -20,7 +20,7 @@ The pattern is proposer and independent verifier, the same idea as a second revi
   disagreement is concrete and reviewable.
 - **Falsifiable reproduction.** A reproduction counts only with a control case that does not show
   the bug.
-- **One human gate.** Agents draft; Marko posts. Feedback flows back so the cloud agent improves.
+- **One human gate.** Agents draft; the engineer posts. Feedback flows back so the cloud agent improves.
 
 ## Shared state (the sync channel)
 
@@ -30,8 +30,8 @@ Linear comments on the issue are the single record both agents read.
 |---|---|---|
 | `## Claimed` | cloud | Lock while it works (45-minute lease) |
 | `Outcome:` or `## Outcome` | cloud | Its recommendation |
-| `## Verification` | local, via Marko | Claim ledger, reproduction, root cause |
-| `## Feedback` | Marko (local draft) | Verdict on the cloud Outcome, per the Support Rotation guidelines |
+| `## Verification` | local, via the engineer | Claim ledger, reproduction, root cause |
+| `## Feedback` | The engineer (local draft) | Verdict on the cloud Outcome, per the Support Rotation guidelines |
 
 Never start a local comment with `Outcome:` or `## Outcome`: the cloud agent treats that as a
 finished recommendation and skips re-runs. A re-summon in Slack (a plain reply mentioning the team
@@ -43,7 +43,7 @@ handle) makes the cloud agent re-investigate with every comment as context.
 |---|---|---|
 | Outcome present | Outcome comment exists | Blind pass, then verify the ledger |
 | In progress | `## Claimed` under 45 minutes, no Outcome | Investigate independently; re-read comments before concluding and reconcile |
-| Missed | Handle mentioned, but no 👀, no bot reply, and no issue | Investigate alone; tell Marko the summon did not trigger (often an edited or formatted message) and suggest a plain thread reply with the handle, or a manual issue in Support Rotation |
+| Missed | Handle mentioned, but no 👀, no bot reply, and no issue | Investigate alone; tell the engineer the summon did not trigger (often an edited or formatted message) and suggest a plain thread reply with the handle, or a manual issue in Support Rotation |
 | No summon | Team handle never tagged | Check it is this team's inquiry before spending time; another team's handle means another rotation |
 
 ## Evidence file
@@ -56,7 +56,7 @@ handle) makes the cloud agent re-investigate with every comment as context.
 4. Experiments: purpose, control and trigger, expected, observed, surface (MCP or API).
 5. Cleanup: each staging write with before-state, status `pending` or `done`, verification.
 6. Conclusion: root cause, confidence, verdict on the cloud Outcome.
-7. Drafts and what was sent (only after Marko confirmed).
+7. Drafts and what was sent (only after the engineer confirmed).
 
 ## Least-intervention ladder
 
@@ -76,7 +76,7 @@ of these holds:
 - a hotel cannot operate (check-in, check-out, night audit, availability, or distribution is down);
 - there is a deadline within about 48 hours (tonight's night audit, tomorrow's arrivals);
 - a recent production deploy looks like the cause (possible revert);
-- the fix needs a decision Marko cannot make (product behaviour, a production flag, another team).
+- the fix needs a decision the engineer cannot make (product behaviour, a production flag, another team).
 
 Otherwise the normal flow applies: reply, then the journey table.
 
@@ -114,7 +114,7 @@ ticket's team:
 
 Both get the Strategic Category (Support & Bug Fixing, or Customer-Driven Development), the team
 label, and `customer` when a named customer reported it. Link them to the support issue as
-related. Create them only after Marko says yes to each one.
+related. Create them only after the engineer says yes to each one.
 
 ## Staging tools
 
@@ -189,7 +189,7 @@ Follow the cloud plugin's `references/memory.md`: one topic per file, symptom, w
 evidence, reply shape, canonical issue. No secrets, no PII, no thread dumps. Update the existing
 note on the same topic instead of adding a second one, and correct it when it is wrong.
 
-After Marko says yes, publish without touching the parked clone:
+After the engineer says yes, publish without touching the parked clone:
 
 ```bash
 MEM="$ROOT/.local/support-rotation/memory-worktree"

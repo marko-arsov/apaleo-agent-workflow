@@ -1,0 +1,7 @@
+{
+  "staging": {
+    "testAccount": "ABCD",
+    "testProperty": "BER",
+    "dbUser": null
+  }
+}

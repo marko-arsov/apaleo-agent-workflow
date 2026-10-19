@@ -4,7 +4,7 @@ After a PR merges to `master`, Jenkins builds and deploys to staging. “Good to
 behavior was observed on a sufficiently fresh staging deployment and the relevant smoke passed. A
 healthy endpoint or a repeated local test is not enough.
 
-Marko has staging VPN and read access to staging core Postgres. Use that access through existing,
+The engineer has staging VPN and read access to staging core Postgres. Use that access through existing,
 unambiguous sessions or profiles; never discover, print, or persist secrets.
 
 ## Staging surfaces
@@ -44,12 +44,31 @@ For API checks and test-data setup, use the first surface that covers the operat
    `HTTP <code>` to stderr, and it exits 1 on a status of 400 or above.
 3. **curl with an existing token**, then the browser, as described below.
 
-**Test account.** Marko's disposable staging account is `ZGMD` (Trial, property `BER` and others)
-unless he names another. Both the MCP and the helper client are bound to it. Automatic reversible
+**Test account.** The engineer's disposable staging account is `staging.testAccount` in the
+per-user config (see "Per-user configuration" below), with `staging.testProperty` as the default
+property. Both the MCP and the helper client are bound to it. Automatic reversible
 writes are allowed only when the active account is that test account. Any other account is
-read-only unless Marko confirms. When a check needs data the test account lacks (a country,
+read-only unless the engineer confirms. When a check needs data the test account lacks (a country,
 a fiscal setup, a flag state), create it there under the reversible-data rules, or name the
 missing setup in one checkpoint.
+
+## Per-user configuration
+
+Values that belong to one engineer live in `$ROOT/.local/user-config.json`, never in the
+repository. `.local/` is untracked. The template is `references/user-config.example.json`;
+`references/user-config.sh get <key>` reads a value, and `user-config.sh init` creates the file.
+
+| Key | Meaning |
+|---|---|
+| `staging.testAccount` | The engineer's disposable staging account. Automatic reversible writes are allowed only there |
+| `staging.testProperty` | Default property in that account for test data |
+| `staging.dbUser` | Optional IAM database user when it differs from the AWS user name with `.` → `_` |
+
+Secrets are never stored there. The staging API client lives in `.local/staging-api/` and Jenkins
+credentials in the shell or `~/.config/jenkins.env`. When `staging.testAccount` is missing, ask
+once for the account code, create the file with `user-config.sh init`, and fill in the value after
+the engineer confirms. Until then, run only reads; `staging-api.sh` refuses writes without it, and
+refuses them when the token's account is a different one.
 
 ## Non-negotiable boundaries
 
@@ -165,7 +184,7 @@ never invent a client secret.
 ## Read-only staging SQL
 
 **Primary route: `$ROOT/.claude/skills/references/staging-sql.sh`.** It connects to the staging core
-cluster as Marko's IAM database user (`marko_arsov`, derived from the AWS identity) with a
+cluster as the engineer's IAM database user (`staging.dbUser`, else derived from the AWS identity) with a
 15-minute IAM token, and never prints the token. Read-only is enforced three times: the statement
 must start with `SELECT`, `WITH`, `EXPLAIN`, `SHOW`, `TABLE`, or `VALUES` (one statement per call);
 the session sets `default_transaction_read_only=on`; and the query runs inside
@@ -179,7 +198,7 @@ staging-sql.sh -f query.sql
 
 Exit codes: `0` ok, `1` query error, `2` refused or usage, `3` network, `4` authentication.
 
-- Exit `3` means the private cluster is unreachable: ask Marko once to connect the **staging VPN**
+- Exit `3` means the private cluster is unreachable: ask the engineer once to connect the **staging VPN**
   (AWS VPN Client), then retry once.
 - Exit `4` means the AWS CLI identity or the IAM database user is missing; name it and stop the SQL
   check.
@@ -192,7 +211,7 @@ staging data source uses the same IAM user with its **Read-only** option on;
 whose name contains `apaleo-staging-aurora-cluster` and whose `readOnly` is `true`. If Rider is not
 open, ask once whether to run `/open-rider`, then continue. Rider has been seen to refuse every MCP
 query (`User rejected query.`) even with a passing connection test; then mark the SQL check
-**NOT RUN**, tell Marko once, and continue with the other surfaces. Do not loop.
+**NOT RUN**, tell the engineer once, and continue with the other surfaces. Do not loop.
 
 Do not put connection details or tokens on the command line or in evidence. With any route other
 than the helper, run the focused query inside a server-enforced read-only transaction and roll it
@@ -297,7 +316,7 @@ When the request names more than one issue or PR:
 ## Evidence artifact
 
 Save `ai-plans/<branch>/staging-smoke.md` (or the next numbered file for a later completed run).
-A target with no plan of Marko's (someone else's PR, an issue without a branch here) is saved under
+A target with no plan of the engineer's (someone else's PR, an issue without a branch here) is saved under
 `$ROOT/.local/staging-smoke/<repo>-<pr or issue>/staging-smoke.md`. A multi-target run also writes
 `$ROOT/.local/staging-smoke/<UTC>-batch.md` with the per-target table, the integration checks, and the
 shared cleanup ledger, and links each target artifact. Each artifact contains:

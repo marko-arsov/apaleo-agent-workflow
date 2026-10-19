@@ -218,7 +218,7 @@ E2E suite. It ends with one verdict: safe to deploy (with the exact `Deployment/
 fix first, revert, wait, or blocked. It runs read-only plus tightly bounded disposable-account
 browser/API/SQL checks without an option-menu pause. API checks
 and test data go through the Apaleo MCP first, then `references/staging-api.sh`; automatic writes
-happen only on Marko's test account. Several targets share readiness probes, fixtures, and one
+happen only on the configured test account. Several targets share readiness probes, fixtures, and one
 cleanup ledger, and get an integration check where they touch the same thing. It uses browser control when the current host provides it and leaves
 only sign-in/MFA, high-impact shared-state changes, missing access, or genuine human judgment as one
 short step-by-step handoff. Reachability, deployment freshness, and ticket-specific verification are
@@ -250,7 +250,7 @@ does the first static pass and posts an Outcome on the Linear issue. The local s
 6. drafts the Slack reply, lead or owner messages, a Linear `## Verification` plus `## Feedback`
    comment, the issues, and a corrected team-memory note.
 
-Reads and straightforward reversible writes on Marko's test account need no confirmation; shared
+Reads and straightforward reversible writes on the configured test account need no confirmation; shared
 configuration, flags, money, deletions, or uncertain cleanup do. Nothing is posted, moved, or pushed
 without a yes. Production is never written. Details: `references/support-rotation.md`.
 
@@ -293,11 +293,14 @@ No item adds a recurring model call.
   reuses the agent's Outcome and team memory instead of repeating them, checks each claim, and
   spends its effort on staging reproduction, flag state, and targeted questions. Linear comments
   (`## Verification`, `## Feedback`) and the `data/engineering-tech-support` memory notes are the
-  shared record. `staging-api.sh` reads untracked client credentials and never prints them.
+  shared record. `staging-api.sh` reads untracked client credentials and never prints them. Per-engineer
+  values (test account, property, database user) live in the untracked `.local/user-config.json`
+  (template `references/user-config.example.json`); the repository holds no personal setup, and
+  `staging-api.sh` refuses writes outside the configured test account.
 
 - 2026-10-19: `/test-on-staging` accepts several issues, PRs, or branches in one run and uses the
   Apaleo MCP, then the shared `references/staging-api.sh`, for API checks and test data. Automatic
-  reversible writes are limited to the test account (`ZGMD` by default). Multi-target runs share
+  reversible writes are limited to the configured test account (`staging.testAccount`). Multi-target runs share
   readiness and cleanup, add integration checks, report a per-target table with the worst state as
   the overall result, and write a batch summary under `.local/staging-smoke/`.
 
@@ -308,7 +311,7 @@ No item adds a recurring model call.
   escalation criteria, the reply with fix steps, and offered fix and improvement issues.
 
 - 2026-10-19: Read-only staging SQL in `/test-on-staging` and `/support-rotation` goes through
-  `references/staging-sql.sh`: `psql` with an IAM token for Marko's database user, a statement
+  `references/staging-sql.sh`: `psql` with an IAM token for the engineer's database user, a statement
   allowlist, `default_transaction_read_only=on`, and a read-only transaction. It needs the staging
   VPN and reports a clear exit code when it is down. The Rider MCP (read-only data source, SQL
   tools allowed without a prompt) is the fallback, because Rider refused MCP queries in testing.

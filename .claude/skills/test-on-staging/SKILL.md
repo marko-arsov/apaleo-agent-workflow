@@ -19,7 +19,7 @@ Answer one question with observed evidence: **can these merged changes go to pro
 things decide it, in this order: the pipelines for those commits passed, staging runs a revision
 that contains them, and the changed behaviour works on staging. This is a smoke, not a regression
 run: a few focused checks per change, never a replay of the E2E suite. It is an execution skill:
-finish every safe check available to the current host before asking Marko to do anything.
+finish every safe check available to the current host before asking the engineer to do anything.
 
 Read `$ROOT/.claude/skills/references/staging-smoke.md` first. Load `feature-flags.md` only when the
 change is gated.
@@ -65,7 +65,7 @@ readiness probes and local evidence inspection remain safe unless they also opte
 ## 1. Resolve the merged changes
 
 Accept one or more branches, issue ids, PR URLs/numbers, or “the thing that just merged”, in any
-mix (for example `SL-126 SL-122 apaleo/apaleo#13219`). Each resolves to one **target**.
+mix (for example `SL-101 SL-102 apaleo/apaleo#1234`). Each resolves to one **target**.
 
 1. Resolve each explicit input with `resolve_feature_branch` from
    `$ROOT/.claude/skills/pipeline/root.sh`. An issue resolves to every linked PR across
@@ -73,7 +73,7 @@ mix (for example `SL-126 SL-122 apaleo/apaleo#13219`). Each resolves to one **ta
 2. Read the matching `ai-plans/<branch>/` artifacts, then merged PR body/diff and changed tests.
    A target without a plan here (someone else's PR, an issue with no local branch) is derived from
    the issue text, the PR body and diff, and its tests.
-3. For “the thing that just merged”, inspect recent merged PRs authored by Marko in every relevant
+3. For “the thing that just merged”, inspect recent merged PRs authored by the engineer in every relevant
    repository and correlate them by head branch and plan. Select the single clear match.
 4. Ask only when an input stays ambiguous; show a short numbered list with repo, PR, title, head
    branch, and merge time.
@@ -145,8 +145,8 @@ Use the strongest available surface:
    evidence. UI is not automatically “human only”.
 2. Use the Apaleo MCP for API checks and test-data setup, then `references/staging-api.sh` for
    endpoints the MCP lacks (“API surfaces: MCP, then helper” in `staging-smoke.md`). Check the active
-   account first; automatic reversible writes are allowed only on Marko's test account (`ZGMD`
-   unless he names another). Use the API contract and exact endpoint for API-only guards rather
+   account first; automatic reversible writes are allowed only on the configured test account
+   (`staging.testAccount`). Use the API contract and exact endpoint for API-only guards rather
    than asking the user to operate Swagger.
 3. Use authenticated GETs automatically through the MCP, the helper, or an existing token/session,
    without exposing credentials. For mutation-capable requests, apply the autonomy boundary above.
@@ -182,7 +182,7 @@ Combine pipeline, deployment, and smoke results into exactly one recommendation:
 With **Safe**, give the exact production input: Jenkins `Deployment/Core`, the parameter per
 service with the 7-character SHA, the other commits that ship with it, migrations to watch (the
 30-second startup limit), and what to watch afterwards (#operations, Datadog errors for the changed
-endpoints). Never trigger the deployment; Marko or the release owner does.
+endpoints). Never trigger the deployment; the engineer or the release owner does.
 
 With **Quick fix**, name the failing behaviour, the suspected cause with evidence, the smallest fix,
 and that it goes through `/specify` and `/implement` like any bugfix. With **Revert**, give the
@@ -258,8 +258,8 @@ then the integration checks and the shared cleanup ledger:
 
 | Target | PRs | Pipeline | Staging | Smoke | Key evidence |
 |---|---|---|---|---|---|
-| SL-126 | apaleo#… | #185 SUCCESS | deployed | PASS | … |
-| SL-122 | apaleo#… | running | not yet | WAIT | … |
+| SL-101 | apaleo#… | #185 SUCCESS | deployed | PASS | … |
+| SL-102 | apaleo#… | running | not yet | WAIT | … |
 
 ### Integration checks
 | Check | Result | Evidence |

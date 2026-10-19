@@ -11,6 +11,8 @@
 # Credentials: APALEO_STAGING_CLIENT_ID + APALEO_STAGING_CLIENT_SECRET, or
 # $ROOT/.local/staging-api/staging-client.json {"clientId","clientSecret"}.
 # The response body goes to stdout and "HTTP <code>" to stderr; exit 1 on >= 400.
+# Writes (POST, PUT, PATCH, DELETE) run only when the token's account equals staging.testAccount
+# in the per-user config ($ROOT/.local/user-config.json, see user-config.sh); reads always run.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,7 +26,7 @@ CLIENT_FILE="$STATE_DIR/staging-client.json"
 TOKEN_FILE="$STATE_DIR/.token"
 
 usage() {
-  sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 claims() {
@@ -93,6 +95,19 @@ esac
 [[ "$path" == /* ]] || { echo "Path must start with /" >&2; exit 2; }
 
 token_valid || fetch_token
+
+if [[ "$method" != "GET" ]]; then
+  expected="$("$SCRIPT_DIR/user-config.sh" get staging.testAccount 2>/dev/null || true)"
+  actual="$(claims | jq -r '.account_code // .acc // empty' 2>/dev/null || true)"
+  if [[ -z "$expected" ]]; then
+    echo "Refused: no staging.testAccount in $("$SCRIPT_DIR/user-config.sh" path). Writes need a configured test account." >&2
+    exit 2
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    echo "Refused: the token belongs to account '$actual', not the configured test account '$expected'." >&2
+    exit 2
+  fi
+fi
 
 args=(-sS -X "$method" -H "Accept: application/json" -H "Authorization: Bearer $(cat "$TOKEN_FILE")"
   -o /dev/stdout -w '%{stderr}HTTP %{http_code}\n')

@@ -19,7 +19,7 @@ argument-hint: "[Slack thread url | Linear issue url or id] [focus]"
 One inquiry, two agents, one human voice. The **cloud agent** (`rotation-processor` in
 `agent-skills`, Cursor Cloud) already does the first static pass: thread, Linear, Notion, code,
 sometimes Datadog. It cannot run anything. This skill is the **local verifier**: it checks the cloud
-claims instead of redoing them, then spends its effort on what only a local session can do. Marko
+claims instead of redoing them, then spends its effort on what only a local session can do. The engineer
 is the only one who speaks to colleagues.
 
 Read `$ROOT/.claude/skills/references/support-rotation.md` first. It holds the collaboration
@@ -88,7 +88,7 @@ Pick the cheapest action that separates the remaining hypotheses:
 
 1. **Discriminating question** for the colleague: one or two precise data asks (a breakdown, a time,
    a setting) that rule hypotheses in or out. Prefer this when production data decides it.
-2. **Feature-flag state.** Name the flag and the per-environment rules (ConfigCat; ask Marko for a
+2. **Feature-flag state.** Name the flag and the per-environment rules (ConfigCat; ask the engineer for a
    screenshot if you cannot read it). A flag that differs between staging and production explains a
    failed reproduction.
 3. **Staging reproduction** (section 5). Needed for High confidence on a behavioural defect.
@@ -104,12 +104,12 @@ supply the missing fact.
 
 Surfaces, in order:
 
-1. **Apaleo MCP** (staging). Call `GetCurrentAccount` first; continue only on Marko's test account
-   (`ZGMD` unless he names another). In gateway mode only `search_tools`/`get_schema` are listed:
+1. **Apaleo MCP** (staging). Call `GetCurrentAccount` first; continue only when it returns the configured
+   `staging.testAccount` (per-user config, see `staging-smoke.md`). In gateway mode only `search_tools`/`get_schema` are listed:
    discover the operation, then call it.
 2. `$ROOT/.claude/skills/references/staging-api.sh` (client-credentials token; never prints
    secrets; setup in `staging-smoke.md`).
-3. Exact UI steps for Marko when neither covers the operation.
+3. Exact UI steps for the engineer when neither covers the operation.
 
 Design every reproduction as an experiment with a **control**: the same steps with and without the
 suspected trigger (or flag on and off). Expected results for both are written down before the run.
@@ -121,13 +121,13 @@ Authorization:
   proof needs (amend a test block or reservation, create a disposable test booking), after the
   before-state and cleanup are recorded as **pending** in the evidence file.
 - Ask once, with the exact actions, target, side effects, and cleanup: anything touching shared
-  configuration or feature flags (Marko changes ConfigCat himself), another account, money,
+  configuration or feature flags (the engineer changes ConfigCat), another account, money,
   payments, invoices or fiscal documents, night audit, deletions, emails or webhooks, more than a
   handful of entities, or uncertain cleanup.
 - Never write to production.
 
 After the run, restore the before-state, re-read it to verify, mark cleanup complete, and delete
-cached tokens. Remind Marko of any configuration he changed for the experiment.
+cached tokens. Remind the engineer of any configuration they changed for the experiment.
 
 ## 6. Conclude
 
@@ -143,10 +143,10 @@ cached tokens. Remind Marko of any configuration he changed for the experiment.
 
 ## 7. Next steps
 
-End every investigation with a decision for Marko, not only findings. Pick every row that applies,
+End every investigation with a decision for the engineer, not only findings. Pick every row that applies,
 in this order (criteria and templates in the reference):
 
-| Situation | What you give Marko |
+| Situation | What you give the engineer |
 |---|---|
 | **Information is missing** | The exact question(s) to post in the thread: who should answer, the precise data asked for, and how each possible answer changes the conclusion |
 | **Urgent or high impact** (escalation criteria in the reference) | "Tell your team lead now", the reason in one line, and a short paste-ready message for the lead |
@@ -167,14 +167,14 @@ Then write the drafts from the reference templates into the evidence file and pr
    existing note is wrong.
 
 Nothing is posted, created, moved, labelled, or pushed without an explicit yes for that action
-(`references/speak-as-user.md`). After a yes, Linear writes use the Linear MCP as Marko, and a
+(`references/speak-as-user.md`). After a yes, Linear writes use the Linear MCP as the engineer, and a
 memory note is pushed as described in the reference. A production configuration change is
-Marko's, after the owner agrees; give him the exact steps and the check to make before saving.
+the engineer's, after the owner agrees; give them the exact steps and the check to make before saving.
 
 ## Chat output
 
 Lead with the verdict and root cause, then the drafts. Render Markdown, no transcripts. Keep the
-reasoning for Marko short and concrete; he may be new to the area, so explain domain terms the
+reasoning for the engineer short and concrete; they may be new to the area, so explain domain terms the
 first time.
 
 ```markdown
