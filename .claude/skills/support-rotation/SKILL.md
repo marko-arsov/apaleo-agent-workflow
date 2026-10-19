@@ -120,20 +120,16 @@ Surfaces, in order:
 Design every reproduction as an experiment with a **control**: the same steps with and without the
 suspected trigger (or flag on and off). Expected results for both are written down before the run.
 
-Authorization:
-
-- Always allowed: reads on staging; reads of local repositories and git history.
-- Allowed without asking when straightforward: reversible writes on the test account that the
-  proof needs (amend a test block or reservation, create a disposable test booking), after the
-  before-state and cleanup are recorded as **pending** in the evidence file.
-- Ask once, with the exact actions, target, side effects, and cleanup: anything touching shared
-  configuration or feature flags (the engineer changes ConfigCat), another account, money,
-  payments, invoices or fiscal documents, night audit, deletions, emails or webhooks, more than a
-  handful of entities, or uncertain cleanup.
-- Never write to production.
+Authorization follows "Reversible staging data" in `staging-smoke.md`. In short: reads are always
+allowed; any test inside `staging.testAccount` that affects nobody else (bookings, charges,
+payments on test folios, invoices, night audit, the account's own settings) runs without asking,
+with the pending cleanup recorded in the evidence file first; anything that could reach other
+people (another account, shared flags or configuration, emails or webhooks, users or permissions,
+load on shared staging, impossible cleanup) needs one confirmation. Never write to production.
 
 After the run, restore the before-state, re-read it to verify, mark cleanup complete, and delete
-cached tokens. Remind the engineer of any configuration they changed for the experiment.
+cached tokens. List any leftover the API refused to delete. Remind the engineer of any
+configuration they changed for the experiment.
 
 ## 6. Conclude
 

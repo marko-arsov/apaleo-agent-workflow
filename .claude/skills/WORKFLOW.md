@@ -289,6 +289,10 @@ No item adds a recurring model call.
 
 ## Maintenance log
 
+- 2026-10-19: `/publish-workflow` opens the pull request from `origin/master` even when
+  the checkout is on another branch. It carries uncommitted edits and commits that
+  are not on `origin/master`. It stops when those changes do not apply cleanly.
+
 - 2026-10-19: Added `/support-rotation`, the local verifier for the cloud support agent. It
   reuses the agent's Outcome and team memory instead of repeating them, checks each claim, and
   spends its effort on staging reproduction, flag state, and targeted questions. Linear comments
