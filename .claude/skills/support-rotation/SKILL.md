@@ -43,17 +43,23 @@ Cursor on-demand Claude. Do not hand off between hosts mid-investigation.
 
 1. Read the Slack thread (Slack MCP `slack_read_thread`, parse `p<digits>` → `<10>.<6>`), then any
    public thread it links, one hop.
-2. Find the Linear issue: the argument, the bot's "Investigation ready for review" reply, or the
+2. Identify the **origin and the asker** ("Inquiry origin" in the reference). A **Zendesk**
+   inquiry starts with a Zendesk bot message "<CS agent> in Ticket #<n>": the asker is that named
+   CS agent, the customer is a hotel that never sees Slack, the Dispatcher (Zapier) bot posted the
+   summon, and later CS follow-ups arrive as Zendesk bot messages quoting the agent. A **direct**
+   inquiry is posted and tagged by the colleague who asks. Record origin, asker, ticket number, and
+   the priority given.
+3. Find the Linear issue: the argument, the bot's "Investigation ready for review" reply, or the
    issue's Slack attachment. Read the issue and all comments.
-3. Classify the cloud state (contract table in the reference): **Outcome present**,
+4. Classify the cloud state (contract table in the reference): **Outcome present**,
    **in progress** (`## Claimed` under 45 minutes, no Outcome), **missed** (summon but no 👀/bot
    reply/issue), or **no summon** (the handle was never tagged). Never wait on the cloud; in
    progress or missed means you proceed and reconcile before the final answer.
-4. Resolve the team folder from the issue prefix (`HC` → `hotel-operations`, …). Read its memory
+5. Resolve the team folder from the issue prefix (`HC` → `hotel-operations`, …). Read its memory
    notes read-only:
    `git -C "$ROOT/agent-skills" fetch -q origin data/engineering-tech-support`, then `git show` the
    `teams/<slug>/*.md` files relevant to the symptom. Never switch the parked clone.
-5. Open or resume `$ROOT/.local/support-rotation/<ISSUE or thread-ts>/investigation.md`. On a
+6. Open or resume `$ROOT/.local/support-rotation/<ISSUE or thread-ts>/investigation.md`. On a
    continuation, read it first and do not repeat finished checks or cleanup.
 
 ## 2. Blind pass (anchoring control)
@@ -158,7 +164,9 @@ Then write the drafts from the reference templates into the evidence file and pr
 
 1. Investigation summary (verdict table, root cause, ledger highlights, reproduction table).
 2. The next-steps block above.
-3. Slack reply to the colleague, simple and friendly; no class names or paths.
+3. Slack reply to the asker, simple and friendly; no class names or paths. For a Zendesk inquiry,
+   address the named CS agent and @-mention them, write for them (they decide what the hotel is
+   told), and use the ticket number when referring to the case.
 4. Messages to the team lead or to a code or flag owner, only when someone else must decide or act.
 5. Linear `## Verification` and `## Feedback` comment, plus the proposed status and labels from
    the guidelines' journey table.
@@ -180,6 +188,7 @@ first time.
 ```markdown
 ## <ISSUE> — <root cause in one line>
 
+**Origin:** direct from <colleague> | Zendesk #<n>, asked by <CS agent>
 **Cloud Outcome:** correct | partially correct | wrong — <what it missed>
 **Confidence:** High | Medium | Low — <basis>
 **Urgency:** normal | escalate to team lead now — <reason>

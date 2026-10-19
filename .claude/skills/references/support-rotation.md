@@ -37,6 +37,27 @@ Never start a local comment with `Outcome:` or `## Outcome`: the cloud agent tre
 finished recommendation and skips re-runs. A re-summon in Slack (a plain reply mentioning the team
 handle) makes the cloud agent re-investigate with every comment as context.
 
+## Inquiry origin
+
+| | Direct inquiry | Zendesk inquiry |
+|---|---|---|
+| Starts in | Slack: a colleague (CS, account or partner manager) posts in `#product-inquiries` | A customer ticket in Zendesk (`apaleo.zendesk.com`), opened by a hotel or partner |
+| First message | The colleague's own message | Zendesk bot: "<CS agent> in Ticket #<n>:" followed by the agent's internal note |
+| Who tagged the team | The colleague, with a priority they chose | The Dispatcher (Zapier) bot, after support decided the routing; priority from that routing |
+| Asker to answer | The colleague | The named CS agent, not the bot and not the hotel |
+| Follow-ups | Normal Slack replies | Zendesk bot messages quoting the agent ("*<agent>:* …"); a re-asked question often means the customer chased again |
+
+For a Zendesk inquiry:
+
+- The hotel never reads Slack. Write for the CS agent; technical detail is fine, and customer
+  wording is theirs to choose.
+- @-mention the named agent in the reply so they are notified; do not rely on the bot sync alone.
+- Mention the ticket number in the reply and on the Linear issue (`Zendesk #<n>` in **From.**).
+- Several bot follow-ups without an engineering reply mean the inquiry is overdue: say so first in
+  the next steps, as with HC-3465.
+- Some links (the ticket, internal notes) open only in Zendesk. Ask the agent for what is needed
+  instead of guessing at the ticket's content.
+
 ## Cloud state
 
 | State | How to tell | Local action |
@@ -127,10 +148,11 @@ The Apaleo MCP, `references/staging-api.sh`, and the test account are described 
 ### Slack reply to the colleague
 
 Short, friendly, plain. No greeting padding, no class names or paths, no promised timelines. Say
-what is true, why, and what they can do now.
+what is true, why, and what they can do now. Address the asker; for a Zendesk inquiry that is the
+named CS agent, @-mentioned, with the ticket number where it helps.
 
 ```text
-Hi <name>, we found the cause 🙂
+Hi @<name>, we found the cause 🙂
 
 <What the numbers mean, in one or two sentences.>
 

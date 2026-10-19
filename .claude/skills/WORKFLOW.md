@@ -296,7 +296,9 @@ No item adds a recurring model call.
   shared record. `staging-api.sh` reads untracked client credentials and never prints them. Per-engineer
   values (test account, property, database user) live in the untracked `.local/user-config.json`
   (template `references/user-config.example.json`); the repository holds no personal setup, and
-  `staging-api.sh` refuses writes outside the configured test account.
+  `staging-api.sh` refuses writes outside the configured test account. `/support-rotation` tells
+  Zendesk inquiries (bot-posted, Dispatcher summon, the named CS agent as the asker, follow-ups as
+  bot messages) from direct ones and addresses its reply to the right person.
 
 - 2026-10-19: `/test-on-staging` accepts several issues, PRs, or branches in one run and uses the
   Apaleo MCP, then the shared `references/staging-api.sh`, for API checks and test data. Automatic
