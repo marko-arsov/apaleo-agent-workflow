@@ -112,14 +112,41 @@ worktree_branch_from_cwd() {
 }
 
 normalize_feature_query() {
-  local query token digits
+  local query token digits prefix
   query="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  # A bare issue id, with or without a dash: sl129, sl-129, c3331, hc3331.
+  if [[ "$query" =~ ^([a-z]{1,8})[[:space:]_-]*([0-9]+)$ ]]; then
+    prefix="${BASH_REMATCH[1]}"
+    digits="${BASH_REMATCH[2]}"
+    if [[ "$prefix" == "c" || "$prefix" == "hc" ]]; then
+      printf 'hc-%s' "$digits"
+      return 0
+    fi
+    if [[ ${#prefix} -ge 2 ]]; then
+      printf '%s-%s' "$prefix" "$digits"
+      return 0
+    fi
+  fi
   token="$(printf '%s' "$query" | grep -Eio 'h?c[[:space:]_-]*[0-9]+' | head -1 || true)"
   if [[ -n "$token" ]]; then
     digits="$(printf '%s' "$token" | tr -cd '0-9')"
-    query="hc-$digits"
+    printf 'hc-%s' "$digits"
+    return 0
   fi
   printf '%s' "$query"
+}
+
+# Issue ids match on a digit boundary, so sl-129 does not select sl-1290.
+branch_matches_needle() {
+  local branch_l="$1" needle="$2"
+  if [[ "$needle" =~ ^[a-z]+-[0-9]+$ ]]; then
+    [[ "$branch_l" =~ (^|[^0-9])${needle}([^0-9]|$) ]]
+    return
+  fi
+  case "$branch_l" in
+    *"$needle"*) return 0 ;;
+  esac
+  return 1
 }
 
 feature_match_add() {
@@ -206,7 +233,10 @@ resolve_feature_branch() {
   needle="$(normalize_feature_query "$query")"
   if [[ -n "$cwd_branch" ]]; then
     branch_l="$(printf '%s' "$cwd_branch" | tr '[:upper:]' '[:lower:]')"
-    case "$branch_l" in *"$needle"*) printf '%s' "$cwd_branch"; return 0 ;; esac
+    if branch_matches_needle "$branch_l" "$needle"; then
+      printf '%s' "$cwd_branch"
+      return 0
+    fi
   fi
 
   while IFS= read -r -d '' repo_dir; do
@@ -217,11 +247,9 @@ resolve_feature_branch() {
     wt="$(dirname "$repo_dir")"
     branch="${wt#"$ROOT/worktrees/"}"
     branch_l="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]')"
-    case "$branch_l" in
-      *"$needle"*)
-        feature_match_add "$branch"
-        ;;
-    esac
+    if branch_matches_needle "$branch_l" "$needle"; then
+      feature_match_add "$branch"
+    fi
   done < <(find "$ROOT/worktrees" -maxdepth 4 -type d \( "${find_repo_predicate[@]}" \) -print0 2>/dev/null)
 
   if [[ ${#matches[@]} -eq 0 && -d "$ROOT/ai-plans" ]]; then
@@ -229,15 +257,13 @@ resolve_feature_branch() {
       plan="$(dirname "$plan_file")"
       branch="${plan#"$ROOT/ai-plans/"}"
       branch_l="$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]')"
-      case "$branch_l" in
-        *"$needle"*)
-          feature_match_add "$branch"
-          ;;
-      esac
+      if branch_matches_needle "$branch_l" "$needle"; then
+        feature_match_add "$branch"
+      fi
   done < <(find "$ROOT/ai-plans" -type f \( -name prompt.md -o -name product.md -o -name implementation.md -o -name progress.md -o -name pr.md \) -print0 2>/dev/null)
   fi
 
-  [[ ${#matches[@]} -eq 0 && "$needle" =~ ^hc-[0-9]+$ ]] && feature_remote_issue_matches "$needle"
+  [[ ${#matches[@]} -eq 0 && "$needle" =~ ^[a-z]+-[0-9]+$ ]] && feature_remote_issue_matches "$needle"
 
   if [[ ${#matches[@]} -eq 1 ]]; then
     printf '%s' "${matches[0]}"

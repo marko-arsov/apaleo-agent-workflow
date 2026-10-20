@@ -16,6 +16,7 @@ paths:
 - Money uses `decimal` plus `IsoCurrency` and established financial rounding.
 - PUT is a full replacement; PATCH is partial.
 - Do not introduce ConfigCat SDK usage in core services; use `config` plus `IFeatureSettingsProvider`.
+- When selecting the time slice a night belongs to, use `TimeRange.IsPrimarilyWithin`. A slice that only clips the next night by the check-in/check-out offset does not qualify. Use `Overlaps` to test whether two ranges intersect.
 - Apply migration, public-contract, and API-enum rules from the indexed references in `AGENTS.md`.
 - When an aggregate already has a create or delete application service, call that service to persist it. Do not copy Insert/Delete, id generation, or entity mapping into a sibling service.
 - Writes that must fail on an archived property go through `ArchivedPropertyReadOnlyInterceptor`, including delete. If the entity is not visible to it (for example `PropertyIds[]`), extend the interceptor instead of adding an application-layer archived check.

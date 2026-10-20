@@ -15,3 +15,7 @@ runs its prescribed script, present the result as readable Markdown:
 
 This is a presentation rule only. It does not change exit-code handling, safety gates, or the
 script's authority.
+
+When the skill resolves a feature and no issue, branch, or PR was given, follow
+`feature-argument.md` before running the script. Ask only when that reference says the feature
+is not certain.

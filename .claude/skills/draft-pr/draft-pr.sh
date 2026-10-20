@@ -142,6 +142,7 @@ done < <(python3 "$SCRIPT_DIR/../pipeline/common.py" extra-repos --root "$ROOT" 
 [[ "$HAVE_AS" -eq 1 ]] && validate_existing_pr "$AS_DEST" agent-skills
 [[ "$HAVE_AAP" -eq 1 ]] && validate_existing_pr "$AAP_DEST" angular-api-proxy
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   validate_existing_pr "$WT/$extra_name" "$extra_name"
 done
 
@@ -186,6 +187,7 @@ if [[ "$HAVE_AAP" -eq 1 ]]; then
   create_or_note "$AAP_DEST" angular-api-proxy "$AAP_TITLE" "$AAP_BODY"
 fi
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   extra_title="$(python3 "$HELPER" title --issue "$ISSUE" --prompt "$PROMPT" --product "$PRODUCT" --implementation "$IMPLEMENTATION" --repo "$extra_name")"
   extra_body="$(new_body "$extra_title" "$RELATED_BASE" "N/A — no e2e changes")"
   create_or_note "$WT/$extra_name" "$extra_name" "$extra_title" "$extra_body"
@@ -207,6 +209,7 @@ AAP_URL=""
 [[ "$HAVE_AS" -eq 0 || -n "$AS_URL" ]] || die_ask "agent-skills draft PR could not be verified after creation"
 [[ "$HAVE_AAP" -eq 0 || -n "$AAP_URL" ]] || die_ask "angular-api-proxy draft PR could not be verified after creation"
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   [[ -n "$(pr_url "$WT/$extra_name")" ]] || die_ask "$extra_name draft PR could not be verified after creation"
 done
 
@@ -237,6 +240,7 @@ APALEO_EXTRAS=()
 [[ -n "$AS_URL" ]] && APALEO_EXTRAS+=("agent-skills PR: $AS_URL")
 [[ -n "$AAP_URL" ]] && APALEO_EXTRAS+=("angular-api-proxy PR: $AAP_URL")
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   extra_url="$(pr_url "$WT/$extra_name")"
   [[ -n "$extra_url" ]] && APALEO_EXTRAS+=("$extra_name PR: $extra_url")
 done
@@ -251,6 +255,7 @@ fi
 [[ "$HAVE_AS" -eq 1 ]] && edit_pr "$AS_DEST" "$AS_TITLE" "$AS_RELATED" "$AS_E2E_FINAL"
 [[ "$HAVE_AAP" -eq 1 ]] && edit_pr "$AAP_DEST" "$AAP_TITLE" "$AAP_RELATED" "$AAP_E2E_FINAL"
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   extra_title="$(python3 "$HELPER" title --issue "$ISSUE" --prompt "$PROMPT" --product "$PRODUCT" --implementation "$IMPLEMENTATION" --repo "$extra_name")"
   extra_related="$RELATED_BASE"
   [[ -n "$APALEO_URL" ]] && extra_related="$(python3 "$HELPER" related --issue "$ISSUE" --linear "$LINEAR" --extra "apaleo PR: $APALEO_URL")"
@@ -272,6 +277,7 @@ done
 [[ "$HAVE_AS" -eq 1 ]] && write_record "$AS_DEST" agent-skills
 [[ "$HAVE_AAP" -eq 1 ]] && write_record "$AAP_DEST" angular-api-proxy
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   write_record "$WT/$extra_name" "$extra_name"
 done
 
@@ -287,6 +293,7 @@ echo "Wrote $PLAN_ROOT/pr.md"
 [[ "$HAVE_AS" -eq 1 && -z "$AS_URL" ]] && echo "agent-skills skipped"
 [[ "$HAVE_AAP" -eq 1 && -z "$AAP_URL" ]] && echo "angular-api-proxy skipped"
 for extra_name in "${EXTRA_READY[@]:-}"; do
+  [[ -n "$extra_name" ]] || continue
   extra_url="$(pr_url "$WT/$extra_name")"
   if [[ -n "$extra_url" ]]; then
     echo "$extra_name Draft: $extra_url"

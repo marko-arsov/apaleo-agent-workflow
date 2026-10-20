@@ -52,7 +52,9 @@ Read `$ROOT/.claude/skills/references/model-routing.md`.
 Comments / Slack / Linear / Notion posts: follow `$ROOT/.claude/skills/references/speak-as-user.md` (ask first). Does **not** apply to normal `/draft-pr` creation.
 ## Resolve PR + target branch
 
-1. From `$ARGUMENTS` / user message: PR URL, `#N`, or branch name.
+1. From `$ARGUMENTS` / user message: PR URL, `#N`, issue id (`sl129` or `sl-129`), or branch name.
+   Nothing passed, and this conversation is about exactly one feature → use that feature
+   (`references/feature-argument.md`). Several or none → ask.
 2. Else open PR for current branch: `gh pr view`.
 3. Else match `$ROOT/ai-plans/<branch>/` + `pr.md` / recent plans.
 4. Resolve head branch: `gh pr view <n> --json headRefName,baseRefName,url` (apaleo, development, identity, agent-skills, and angular-api-proxy when those PRs exist).

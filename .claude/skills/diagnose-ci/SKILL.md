@@ -16,7 +16,8 @@ This is a manual after-PR flow. It is never selected by `/implement-pipeline`.
 
 ## First turn: diagnose only
 
-1. Resolve the target branch and feature worktrees; parked mains stay on `master`.
+1. Resolve the target branch and feature worktrees; parked mains stay on `master`. With no branch
+   or PR, follow `references/feature-argument.md` and use this conversation's one feature.
 2. Read open PRs and `gh pr checks` for apaleo, development, identity, agent-skills, and angular-api-proxy worktrees that exist.
 3. If all checks are green, write `ci-report-<n>.md`, report green, and stop without edits.
 4. For a red Jenkins check, fetch only that branch job's latest completed build metadata and console

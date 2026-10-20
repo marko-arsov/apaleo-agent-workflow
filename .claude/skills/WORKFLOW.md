@@ -197,11 +197,16 @@ Use the full pipeline when its detached stages and publish automation are wanted
 /implement-pipeline HC-3333 --answer 'the required answer'
 ```
 
+A feature id matches with or without the dash (`sl129` is `sl-129`). When a skill that finds a
+feature is given no id, and this conversation is about exactly one feature, pass that id. Ask only
+when it is not unique. See `references/feature-argument.md`.
+
 The worker may detach; its watcher is shell-only and adds no model tokens. Run evidence lives in
 `.local/pipeline-runs/`, state in `.local/pipeline-state/`, and verification logs in
 `.local/pipeline-verification/`.
 
-After a draft PR, use `/address-pr-comments`, `/diagnose-ci`, manual `/test-and-fix`, and
+After a draft PR, `/pr-oneliner` prints the pull request title and every link, with no greeting.
+Then use `/address-pr-comments`, `/diagnose-ci`, manual `/test-and-fix`, and
 `/test-on-staging`. Nothing posts comments, requests review, approves, or merges as the user without
 explicit authorization.
 
@@ -288,6 +293,14 @@ No item adds a recurring model call.
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-10-20: Feature lookup accepts an issue id with or without a dash (`sl129` is `sl-129`)
+  and does not let `sl-129` select `sl-1290`. Skills that resolve a feature use the current
+  conversation when it identifies exactly one feature, and ask only when it does not.
+
+- 2026-10-20: `/pr-oneliner` prints the pull request title, a colon, and one short
+  `github.com` link per pull request. It does not print the product Outcome paragraph
+  or a greeting.
 
 - 2026-10-19: `/publish-workflow` opens the pull request from `origin/master` even when
   the checkout is on another branch. It carries uncommitted edits and commits that

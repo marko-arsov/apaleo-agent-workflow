@@ -36,6 +36,7 @@ Progress and continuation
 
 Manual after draft PR
 ---------------------
+  /pr-oneliner [id|branch|PR]          short PR line, then each link
   /address-pr-comments                 human review comments
   /address-pr-comments --bugbot        Cursor Bugbot loop; always restore draft
   /address-pr-comments --draft-bugbot-replies
