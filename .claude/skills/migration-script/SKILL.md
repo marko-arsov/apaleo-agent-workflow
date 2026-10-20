@@ -18,8 +18,10 @@ when `## Production apply` says manual. The flattened SQL in the PR stays the re
 "$ROOT/.claude/skills/migration-script/migration-script.sh" "$@"
 ```
 
-Short ids like `sl-125`, `hc3331`, or a PR URL are resolved by the script. Do not ask the
-user to confirm a unique resolution.
+Short ids like `sl125`, `sl-125`, `hc3331`, or a PR URL are resolved by the script. Do not ask the
+user to confirm a unique resolution. No issue, branch, or PR → follow
+`$ROOT/.claude/skills/references/feature-argument.md` before running the script. Ask only when
+that feature is not certain.
 
 If it exits `0`, stop. Do **not** read the SQL, grep, explore, or generate the script another
 way. Report the file path, the from and through ids, the PR, and the production assumption

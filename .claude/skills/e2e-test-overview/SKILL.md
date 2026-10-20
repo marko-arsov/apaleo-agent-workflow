@@ -32,9 +32,10 @@ Preferred host: **Cursor Grok** — `e2e-test-overview-cursor` (model per
 
 ## Scope and branch resolution
 
-Accept a full branch, HC shorthand, PR URL, `#PR`, or an explicit development PR. Resolve it with
-`resolve_feature_branch` from `$ROOT/.claude/skills/pipeline/root.sh`. If it is ambiguous, stop
-and ask for the full branch name.
+Accept a full branch, `sl129`, `sl-129`, HC shorthand, PR URL, `#PR`, or an explicit development
+PR. Resolve it with `resolve_feature_branch` from `$ROOT/.claude/skills/pipeline/root.sh`. With no
+argument, follow `$ROOT/.claude/skills/references/feature-argument.md` and pass the one feature
+this conversation identifies. If it is ambiguous, stop and ask for the full branch name.
 
 Fetch `development` and `apaleo` with `git fetch --prune origin`; do not pull, switch branches, or
 create a worktree. Resolve the head ref in each repo, preferring `origin/<branch>` and then the

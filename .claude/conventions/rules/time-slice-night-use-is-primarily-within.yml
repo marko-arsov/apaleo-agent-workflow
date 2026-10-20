@@ -1,0 +1,8 @@
+id: "time-slice-night-use-is-primarily-within"
+tier: 3
+added: "2026-10-20"
+source: "manual"
+statement: "When selecting the time slice a night belongs to, use TimeRange.IsPrimarilyWithin so a checkout/check-in clip does not win; use Overlaps to test intersection."
+violations: 0
+last_violation: null
+scoped_rule: ".claude/rules/apaleo-csharp.md"

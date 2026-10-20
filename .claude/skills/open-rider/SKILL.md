@@ -20,6 +20,9 @@ different repository/solution target when the user explicitly requests it.
 
 Do **not** read repo files, grep, explore, restate rules, or "verify" another way.
 
-Pass an issue id such as `SL-100` directly to the script. Do not require the full branch name or
-manually enumerate matching worktree paths. Ambiguity (dirty worktree, diverged branch, lock held by
-another branch, missing args) → stop and ask. Do not investigate.
+Pass an issue id such as `SL-100` or `sl100` directly to the script. Do not require the dash, the
+full branch name, or a manual worktree search. No issue, branch, or PR → follow
+`$ROOT/.claude/skills/references/feature-argument.md` before running the script. Ask only when that
+feature is not certain.
+
+Ambiguity (dirty worktree, diverged branch, lock held by another branch) → stop and ask. Do not investigate.

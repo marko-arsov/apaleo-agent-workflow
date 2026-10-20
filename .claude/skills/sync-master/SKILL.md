@@ -17,15 +17,17 @@ step and go straight to the conflict path.
 "$ROOT/.claude/skills/sync-master/sync-master.sh" "$@"
 ```
 
-Short ids like `c3331`, `hc3331`, or `hc-3331` are resolved by the script to the current
-matching worktree first, then a unique existing worktree/plan branch. Do not ask
-the user to confirm that unique resolution.
+Short ids like `sl129`, `sl-129`, `c3331`, `hc3331`, or `hc-3331` are resolved by the script to
+the current matching worktree first, then a unique existing worktree/plan branch. Do not ask
+the user to confirm that unique resolution. No issue, branch, or PR → follow
+`$ROOT/.claude/skills/references/feature-argument.md` before running the script.
 
 If it exits `0`, stop. Do **not** read repo files, grep, explore, restate rules,
 or verify another way on the clean path.
 
-Ambiguity before a merge starts (dirty worktree, diverged branch, missing args,
-not under `$ROOT/worktrees/<branch>/`) → stop and ask. Do not investigate.
+Ambiguity before a merge starts (dirty worktree, diverged branch, or not under
+`$ROOT/worktrees/<branch>/`) → stop and ask. Do not investigate. Ask for a feature only when
+`feature-argument.md` says it is not certain.
 
 ## Conflict path (`exit 10`)
 

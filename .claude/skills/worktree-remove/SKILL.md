@@ -15,4 +15,7 @@ according to that reference, and stop.
 
 Do **not** read repo files, grep, explore, restate rules, or "verify" another way.
 
-Ambiguity (dirty worktree, diverged branch, lock held by another branch, missing args) → stop and ask. Do not investigate.
+No issue, branch, or PR → follow `$ROOT/.claude/skills/references/feature-argument.md` before
+running the script. Ask only when that feature is not certain.
+
+Ambiguity (dirty worktree, diverged branch, lock held by another branch) → stop and ask. Do not investigate.

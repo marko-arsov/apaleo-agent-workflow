@@ -34,7 +34,10 @@ the checklist state and any notes appended after it.
 - **Related to:** Linear issue URL when known.
 - **E2E tests:** development PR URL on apaleo (or `N/A — no e2e changes`). Development body: **Related to** includes the apaleo PR (reverse link); **E2E tests:** `this PR`. Agent-skills PRs use `N/A — no e2e changes` unless a development companion exists.
 
-Ambiguity (dirty worktree, diverged branch, lock held by another branch, missing args) → stop and ask. Do not investigate.
+No issue, branch, or PR → follow `$ROOT/.claude/skills/references/feature-argument.md` before
+running the script. Ask only when that feature is not certain.
+
+Ambiguity (dirty worktree, diverged branch, lock held by another branch) → stop and ask. Do not investigate.
 
 ## Automated use (`/implement-pipeline`)
 

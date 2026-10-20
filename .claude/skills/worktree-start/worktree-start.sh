@@ -78,7 +78,7 @@ REQUEST="$BRANCH"
 RESOLVED_BRANCH="$(resolve_feature_branch "$REQUEST")"
 if [[ "$RESOLVED_BRANCH" != "$REQUEST" ]] || feature_worktree_exists "$ROOT/worktrees/$RESOLVED_BRANCH"; then
   BRANCH="$RESOLVED_BRANCH"
-elif [[ "$REQUEST" == http* || ( "$REQUEST" != */* && "$(normalize_feature_query "$REQUEST")" =~ ^hc-[0-9]+$ ) ]]; then
+elif [[ "$REQUEST" == http* || ( "$REQUEST" != */* && "$(normalize_feature_query "$REQUEST")" =~ ^[a-z]+-[0-9]+$ ) ]]; then
   die_ask "could not resolve '$REQUEST' to an existing branch — pass the full new branch name (for example <github-login>/<issue-id>-<slug>)"
 fi
 

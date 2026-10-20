@@ -51,8 +51,8 @@ Feature code belongs only under `$ROOT/worktrees/<branch>/`. This directory is t
 - Commit subject: `<ISSUE-ID> <imperative summary>` — `SL-29 …` for current work, `HC-<id> …` only
   on existing `hc-` branches. Schema-only uses `[DB-MIGRATION] <ISSUE-ID> …`. Use the Linear
   identifier, never the legacy Swarmia id of a renamed issue.
-- Resolve ticket text, PR URLs, `c3331`, `hc3331`, and `sl-29` with `resolve_feature_branch`.
-  It normalizes only `hc`/`c` id forms, so pass `sl-<id>` with the dash (`sl29` will not match).
+- Resolve ticket text, PR URLs, `c3331`, `hc3331`, `sl-29`, and `sl29` with `resolve_feature_branch`.
+  A team id matches with or without the dash (`sl129` is `sl-129`). `c3331` stays `hc-3331`.
 - Never add AI attribution, model names, or generated-by trailers to commits.
 
 Worktree details: `.claude/skills/references/worktrees.md`.

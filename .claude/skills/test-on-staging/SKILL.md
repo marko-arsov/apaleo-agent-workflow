@@ -65,8 +65,10 @@ readiness probes and local evidence inspection remain safe unless they also opte
 
 ## 1. Resolve the merged changes
 
-Accept one or more branches, issue ids, PR URLs/numbers, or “the thing that just merged”, in any
-mix (for example `SL-101 SL-102 apaleo/apaleo#1234`). Each resolves to one **target**.
+Accept one or more branches, issue ids (`sl129` or `sl-129`), PR URLs/numbers, or “the thing that
+just merged”, in any mix (for example `SL-101 SL-102 apaleo/apaleo#1234`). Each resolves to one
+**target**. With no input, follow `$ROOT/.claude/skills/references/feature-argument.md` and use the
+one feature this conversation identifies.
 
 1. Resolve each explicit input with `resolve_feature_branch` from
    `$ROOT/.claude/skills/pipeline/root.sh`. An issue resolves to every linked PR across
