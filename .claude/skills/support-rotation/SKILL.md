@@ -29,8 +29,9 @@ Guidelines (V2 for Hotel Ops) in Notion; read the current page when unsure.
 
 ## Host
 
-Preferred host: Claude Code (Opus, high). On Cursor use `support-rotation-cursor` (Grok); never
-Cursor on-demand Claude. Do not hand off between hosts mid-investigation.
+Run the whole investigation in the current session, on whichever host and model it already uses.
+Do not delegate it to a subagent (including `support-rotation-cursor`) and do not hand off between
+hosts mid-investigation.
 
 ## Inputs
 

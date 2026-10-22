@@ -41,7 +41,7 @@ The fixed order is:
 implement-tests? → implement → review? → commit-and-push? → draft-pr?
 ```
 
-In the full pipeline, `implement-tests` uses Cursor Claude Sonnet 5 by default and Cursor Opus 5.5 for
+In the full pipeline, `implement-tests` uses Cursor Claude Sonnet 5.5 high by default and Cursor Opus 5.5 for
 four or more planned test files or a substantial expected diff, with matching Claude Code fallback;
 implementation uses Cursor Grok 4.7 high. `/specify` offers review by estimate (1 skip; 2 Cursor Sonnet;
 3 Cursor Sol; 5 Cursor Opus) with editable ordered fallbacks. The user confirms the actual selection and
