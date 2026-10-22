@@ -19,9 +19,10 @@ the TDD red stage. It runs in a fresh session and must not share an agent sessio
 
 ## Model gate
 
-**Default route:** Cursor Claude Sonnet 5 (`claude-sonnet-5-thinking-high`). `/specify` suggests
-Cursor Opus 5.5 for four or more planned test files or a substantial expected diff (300+ lines),
-including one large test file. The matching Claude Code model is the first fallback. Any valid
+**Default route:** Cursor Claude Sonnet 5.5 high (`claude-sonnet-5-5-high`). With a current
+catalogue, `/specify` records Sonnet 5.5 medium for an ordinary suite and Cursor Opus 5.5 high
+for four or more planned test files or a substantial expected diff (300+ lines), including one
+large test file. The matching Claude Code model is the first fallback. Any valid
 provider/model route may be shared with implementation and review when confirmed in `pipeline.json`
 or supplied as an explicit `/implement-pipeline --route` override; diversity is a suggestion, never a gate.
 

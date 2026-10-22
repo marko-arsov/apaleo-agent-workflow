@@ -285,7 +285,7 @@ No item adds a recurring model call.
   work. `$ROOT` resolution depends only on `AGENTS.md` + `apaleo/` + `development/`. Another
   `apaleo` org repository attaches for one branch with `--with <name>`: an existing sibling
   checkout is reused, and a missing one is mirrored under `.repos/`. Later stages see it only
-  when that branch recorded it.
+  when that branch recorded it. `package-essential-api` has a parked sibling clone used this way.
 - Never push a base branch or force-push.
 - Never weaken, skip, delete, or quarantine a failing test.
 - Never run destructive shared-environment E2E without confirmation.
@@ -293,6 +293,16 @@ No item adds a recurring model call.
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-10-22: The machine default for `implement-tests` is Cursor Claude Sonnet 5.5 high
+  (`claude-sonnet-5-5-high`). Direct invocation uses that model. A current catalogue still
+  lets `/specify` record Sonnet 5.5 medium for an ordinary suite and Opus 5.5 high for a
+  large test scope. Saved plans keep their existing routes.
+
+- 2026-10-21: `package-essential-api` (Apaleo.Essential.Api NuGet package) is cloned as a
+  parked `master` checkout and attaches per branch with `--with package-essential-api`; no script
+  change was needed. `AGENTS.md` lists its build/test commands and the release-then-bump order
+  for apaleo.
 
 - 2026-10-20: Feature lookup accepts an issue id with or without a dash (`sl129` is `sl-129`)
   and does not let `sl-129` select `sl-1290`. Skills that resolve a feature use the current

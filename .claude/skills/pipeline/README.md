@@ -25,7 +25,7 @@ If omitted inside a feature worktree, the task resolves from the current non-bas
 ```bash
 implement-pipeline.sh HC-3333 \
   --stages implement-tests,implement,review,commit-and-push,draft-pr \
-  --route implement-tests=cursor:claude-sonnet-5-thinking-high \
+  --route implement-tests=cursor:claude-sonnet-5-5-high \
   --fallback implement-tests=claude:sonnet:high \
   --route implement=cursor:grok-4.7-high \
   --route review=cursor:gpt-5.6-sol-high \

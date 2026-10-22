@@ -13,6 +13,7 @@ $ROOT/                         # workflow checkout; product directories here are
 ├── identity/                  # parked master checkout
 ├── agent-skills/              # parked master checkout (team plugins)
 ├── angular-api-proxy/         # parked master checkout (generated Angular API clients)
+├── package-essential-api/     # parked master checkout (Apaleo.Essential.Api NuGet package; attach with --with)
 ├── .repos/<name>.git          # bare mirror of another apaleo org repo, created on first attach
 ├── worktrees/<branch>/        # feature code for the parked repos, plus <name> when that branch attaches it
 ├── ai-plans/<branch>/         # complete, revisable plans + mutable evidence
@@ -44,6 +45,10 @@ Feature code belongs only under `$ROOT/worktrees/<branch>/`. This directory is t
   is the source and stays on `master`. Otherwise the first attach creates `$ROOT/.repos/<name>.git`.
   Later stages include that checkout only when the branch recorded it in `pipeline.json` `extra_repos`
   or `worktrees/<branch>/.extra-repos`.
+- `package-essential-api` is such a repository with a parked clone: attach it with
+  `--with package-essential-api`. apaleo consumes it only as a released NuGet version
+  (`Directory.Packages.props`), so a change merges and is released in the package (GitHub release)
+  before an apaleo branch bumps the version. Never commit a local package feed or unreleased version.
 - Never push to a base branch. Never force-push or use `--force-with-lease`.
 - Default branch: Linear's `gitBranchName`, shaped `<github-login>/<issue-id>-<slug>`. Only
   `/specify` derives a new slug. Current tickets are `sl-<id>` (team Sell); `hc-<id>` branches
@@ -66,6 +71,10 @@ APALEO_TreatWarningsAsErrors=True APALEO_RunAnalyzersDuringBuild=True dotnet bui
 dotnet test Apaleo.sln -c Debug --no-build
 dotnet test test/Apaleo.<Area>.Tests/Apaleo.<Area>.Tests.csproj -c Debug
 dotnet test Apaleo.sln -c Debug --no-build --filter 'FullyQualifiedName~Foo'
+
+# package-essential-api
+dotnet restore Apaleo.Essential.Api.sln && dotnet build Apaleo.Essential.Api.sln -c Debug
+dotnet test Apaleo.Essential.Api.sln -c Debug --no-build
 
 # identity
 dotnet restore Apaleo.Identity.sln && dotnet build Apaleo.Identity.sln -c Debug
