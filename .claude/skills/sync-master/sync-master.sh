@@ -17,6 +17,10 @@ WT="$ROOT/worktrees/$BRANCH"
 feature_worktree_exists "$WT" || die_ask "no feature worktree in $WT — run worktree-start.sh first"
 
 conflicted=0
+if ! leftover="$(python3 "$ROOT/.claude/skills/pipeline/verification.py" \
+  "$BRANCH" --root "$ROOT" --leftover-development)"; then
+  die_ask "$leftover"
+fi
 merge_one() {
   local dest="$1" name="$2"
   is_git_checkout "$dest" || { echo "$name: n/a"; return 0; }

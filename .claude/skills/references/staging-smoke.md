@@ -74,7 +74,7 @@ refuses them when the token's account is a different one.
 
 - Do not run `npm test`, `npm run test:file`, or Jest with `-e staging` / `-e production`. Shared
   staging is smoke-tested with focused UI/API/SQL checks, not the local E2E suite.
-- Never take credentials from `development/src/config.ts`, shell history, logs, or tracked files.
+- Never take credentials from `@apaleo/e2e-sdk-lib`, `development/src/lib/kernel/config.ts`, shell history, logs, or tracked files.
 - Never expose Bearer tokens, client secrets, cookies, connection strings, or sensitive response
   fields in chat, commands shown to the user, screenshots, or `ai-plans/`.
 - Never run staging SQL that can write: no modifying CTE, function with side effects, DML, DDL,

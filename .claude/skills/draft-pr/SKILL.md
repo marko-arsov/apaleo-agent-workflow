@@ -23,16 +23,18 @@ legacy `## Product Summary`. Its **Details** are the in-scope items under `## Sc
 ancestor work. When `migration.sql` exists, the body includes that flattened script. When the plan
 has `## Production apply`, that recommendation is included above the script.
 On a re-run, it refreshes only the generated **Changes** section of an existing draft, retaining
-the checklist state and any notes appended after it.
+the checklist state and any notes appended after it. When `test-judge.md` exists in the plan
+directory, that note is appended after the checklist. A local restore that failed is not a passed
+verification.
 
 - **Title:** the imperative summary from the prompt or product heading. Process suffixes such as
   `Prompt and research`, `Prompt & decisions`, and `Decisions and research` are ignored. If both
   headings are only a process label, the Linear issue title in the prompt is used. An apaleo plan
-  that states `` `[DB-MIGRATION] <issue> <summary>` `` for this PR uses that full title. Development
-  PRs use `Cover … in E2E`.
+  that states `` `[DB-MIGRATION] <issue> <summary>` `` for this PR uses that full title. A development
+  PR that still contains payment E2E uses `Cover … in E2E`.
 
 - **Related to:** Linear issue URL when known.
-- **E2E tests:** development PR URL on apaleo (or `N/A — no e2e changes`). Development body: **Related to** includes the apaleo PR (reverse link); **E2E tests:** `this PR`. Agent-skills PRs use `N/A — no e2e changes` unless a development companion exists.
+- **E2E tests:** `this PR` when that repo's diff touches `e2e/` (core, identity, and other migrated services). `N/A — no e2e changes` when it does not. A development PR is the E2E link only when its diff touches `src/tests` (payment). Agent-skills and angular-api-proxy stay `N/A — no e2e changes`.
 
 No issue, branch, or PR → follow `$ROOT/.claude/skills/references/feature-argument.md` before
 running the script. Ask only when that feature is not certain.

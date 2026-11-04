@@ -31,7 +31,7 @@ or supplied as an explicit `/implement-pipeline --route` override; diversity is 
 1. `$ROOT/AGENTS.md`
 2. The branch's `product.md`, `implementation.md`, and `pipeline.json`
 3. `$ROOT/.claude/skills/references/worktrees.md`
-4. `e2e-test-engineering-development` before any `development/` edit
+4. `e2e-test-engineering-development` before any `e2e/` edit, and before any `development/` edit (payment)
 5. The existing test neighbors cited by the plan
 
 Do not read `prompt.md`, product source paths named by `allowed_paths`, recovery packets, or prior
@@ -53,12 +53,19 @@ not silently expand the plan.
 
 ## Red phase
 
-Run the narrowest useful checks that prove the new tests are discovered and fail for the intended
-missing product behavior. For localhost E2E, acquire the FIFO stack lock from
-`references/e2e-stack.md`; never run against staging or production. An expected product failure is
-success for this stage. Compilation, type-check, missing-symbol, syntax, fixture, import,
-environmental, and unrelated failures are not valid red. A test must be discovered and reach an
-assertion/status comparison that fails specifically because the planned behavior is absent.
+When any acceptance criterion has `red_required: true`, run the narrowest useful checks that prove
+those tests are discovered and fail for the intended missing product behavior. For localhost E2E,
+acquire the FIFO stack lock from `references/e2e-stack.md`; never run against staging or production.
+An expected product failure is success for this stage. Compilation, type-check, missing-symbol,
+syntax, fixture, import, environmental, and unrelated failures are not valid red. A `red_required`
+test must be discovered and reach an assertion/status comparison that fails specifically because
+the planned behavior is absent.
+
+When every criterion has `red_required: false` because the tests name product types, members, or
+generated-client fields that do not exist yet, do not force an assertion failure and do not edit
+`red_required`. Write the tests, record `Failure level: none`, and name the missing members in
+words. Do not paste compiler or type-check output. Assertion-level evidence for those criteria, when
+the plan still wants it, belongs to `implement` after the skeleton exists.
 
 ### Speed and local-E2E discipline
 
@@ -80,13 +87,15 @@ Write `$ROOT/ai-plans/<branch>/red-proof.md`. For every new or changed test, rec
 
 - acceptance criterion and scenario;
 - files changed, each cited as a `$ROOT`-relative path in backticks
-  (`` `apaleo/test/...` ``, `` `development/src/tests/...` ``). Do not list
+  (`` `apaleo/e2e/tests/...` ``, `` `apaleo/test/...` ``, `` `identity/e2e/tests/...` ``,
+  `` `development/src/tests/payment/...` ``). Do not list
   repo-relative leftovers such as `` `test/...` `` under an `apaleo:` heading —
   the runner greps for the workspace-relative string;
 - command actually run;
-- discovered test count;
-- `Failure level: assertion`;
-- the exact failing assertion/status, its output, and why product implementation should make it green;
+- discovered test count, or why discovery cannot run yet;
+- `Failure level: assertion` when any criterion is `red_required`, otherwise `Failure level: none`;
+- for assertion-level red: the exact failing assertion/status, its output, and why product
+  implementation should make it green;
 - checks not run and the concrete reason.
 
 Write a new `$ROOT/ai-plans/<branch>/tests-implementation-<n>.md`; never overwrite an earlier report.

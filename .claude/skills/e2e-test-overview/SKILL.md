@@ -15,7 +15,7 @@ argument-hint: "[branch | HC-#### | PR URL | #PR]"
 Give a fast, read-only explanation of the E2E coverage introduced by a feature branch. The
 reader should understand what the tests prove without needing to read TypeScript. Do **not** write,
 edit, run, or commit tests in this skill. After the recommendations, wait for the user to select
-what to implement; use `/e2e-test-engineering-development` for that later work.
+what to implement; use `/e2e-test-engineering-development` for that later work. Specs for a migrated service are in that repo's `e2e/tests`. Payment stays in `development`.
 
 Read first:
 
@@ -32,27 +32,29 @@ Preferred host: **Cursor Grok** — `e2e-test-overview-cursor` (model per
 
 ## Scope and branch resolution
 
-Accept a full branch, `sl129`, `sl-129`, HC shorthand, PR URL, `#PR`, or an explicit development
-PR. Resolve it with `resolve_feature_branch` from `$ROOT/.claude/skills/pipeline/root.sh`. With no
+Accept a full branch, `sl129`, `sl-129`, HC shorthand, PR URL, `#PR`, or an explicit service or
+development PR. Resolve it with `resolve_feature_branch` from `$ROOT/.claude/skills/pipeline/root.sh`. With no
 argument, follow `$ROOT/.claude/skills/references/feature-argument.md` and pass the one feature
 this conversation identifies. If it is ambiguous, stop and ask for the full branch name.
 
-Fetch `development` and `apaleo` with `git fetch --prune origin`; do not pull, switch branches, or
-create a worktree. Resolve the head ref in each repo, preferring `origin/<branch>` and then the
-local `<branch>` ref. Compare each available ref using the merge-base-aware range:
+Fetch the service repo that owns the change (`apaleo`, `identity`, or another attached service) and,
+when a development ref exists, `development`. Use `git fetch --prune origin`; do not pull, switch
+branches, or create a worktree. Resolve the head ref in each repo, preferring `origin/<branch>` and
+then the local `<branch>` ref. Compare each available ref using the merge-base-aware range:
 
 ```bash
 git -C <repo> diff --stat origin/master...<head>
 git -C <repo> diff --no-ext-diff --no-renames --unified=80 origin/master...<head> -- <paths>
 ```
 
-`development` is required. If the branch has no development ref, report that no E2E branch was
-found and stop; do not infer tests from an apaleo-only change. Use the apaleo diff when available
-only to judge whether the E2E scenarios cover the changed product behaviour.
+E2E for a migrated service is on that service's branch, under `e2e/tests`. A missing `development`
+ref is normal. Stop for "no E2E branch" only when the service ref is also missing. Use the product
+diff to judge whether the E2E scenarios cover the changed behaviour. Payment coverage is the
+exception: read `development/src/tests/payment`.
 
 ## What counts as an added test
 
-Inspect `development/src/tests/**/*.ts` in the diff and the surrounding complete specs. Count a
+Inspect `<service>/e2e/tests/**/*.ts` in the diff (payment: `development/src/tests/payment/**/*.ts`) and the surrounding complete specs. Count a
 scenario only when its Jest declaration (`it`, `test`, or their focused/skipped variants) was
 introduced by the branch. A new spec file contributes each scenario it contains. Do not mistake
 new setup, assertions inside an existing scenario, renamed files, comments, or helper code for a
@@ -82,7 +84,7 @@ Rank recommendations:
 
 For each, give a minimal scenario, why it matters, and the exact changed file/symbol that supports
 the recommendation. Clearly label inferences as such. If the apaleo branch is unavailable, say
-that recommendations are limited to evidence in `development`.
+that recommendations are limited to the product diff.
 
 ## Output
 
@@ -91,7 +93,7 @@ to inspect details.
 
 ```text
 Branch: <branch>
-Compared: development origin/master...<head>; apaleo <range|not found>
+Compared: <service> origin/master...<head> e2e/tests; development <range|not used>
 E2E coverage: <n> scenarios added in <n> spec files; <n> existing scenarios changed.
 
 ## What this branch now tests

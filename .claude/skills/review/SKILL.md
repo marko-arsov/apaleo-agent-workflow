@@ -21,7 +21,9 @@ and never commits or pushes. Its behavior depends on how it is invoked:
 - **Pipeline review:** apply unambiguous, plan-authorized correctness fixes and same-behavior
   convention/DRY improvements within the manifest paths. Run the narrowest affected named checks,
   record the result, and continue: findings, environment trouble, report defects, and provider
-  failures are advisory and never hold up later selected stages.
+  failures are advisory and never hold up later selected stages. The runner commits the stage
+  afterward. A skip, a deleted test, or a changed assertion is restored from the implement-tests
+  commit and the affected command is run once.
 - **Direct `/review`:** check-only and advisory. It never edits code, tests, generated files, plans,
   or configuration. It writes a report/plan for follow-up and asks for confirmation whenever the
   review basis or solution is ambiguous.

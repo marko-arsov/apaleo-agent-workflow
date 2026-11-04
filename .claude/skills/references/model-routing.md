@@ -10,7 +10,10 @@ no stage routes or provider preflight.
 Use `/update-models` to refresh native catalogues, confirm providers and global/project scope,
 and approve an exact settings diff. See `model-policy.md` for the shared evaluator contract.
 Apaleo owns separate machine settings and workspace overrides; it never reads another workflow's
-mutable settings. Every specify evaluates offline using existing task facts. Routine work uses
+mutable settings. Every specify evaluates offline using existing task facts. The evaluator gives
+`implement`, `implement-tests`, and `review` different labs when a reviewed model
+in band exists; a one-band step is recorded as an advisory. `models watch` records
+Artificial Analysis evidence and does not change those routes. Routine work uses
 reviewed balanced effort; demanding stages may escalate; maximum effort is explicitly selected.
 No extra model call, effort question or automatic retry is added.
 

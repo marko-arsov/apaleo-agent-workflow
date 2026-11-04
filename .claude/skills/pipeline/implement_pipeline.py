@@ -64,11 +64,24 @@ from stage_result import (  # noqa: E402
     load_json,
     provider_diagnostic_text,
 )
+from test_judge import (  # noqa: E402
+    TestJudgeError,
+    affected_commands,
+    changed_paths,
+    checkpoint_message,
+    classify_diff,
+    commit_worktree,
+    diff_excerpt,
+    file_diff,
+    render_report,
+    restore_test_file,
+)
 from verification import (  # noqa: E402
     VerificationError,
     assert_no_new_decisions,
     assert_review_gates,
     diff_fingerprint,
+    parse_test_output,
     precommit_scan,
     validate_red_proof,
     verify as verify_implementation,
@@ -936,19 +949,26 @@ def stage_context(
         "implement-tests": (
             "Implement the complete plan-specified test suite before product code. Modify only the "
             "manifest's test_paths. Prefer E2E coverage; add unit/policy tests where the plan requires. "
-            "Do not read product source paths under change or prior implementation attempts. Run the "
-            "narrowest useful red-phase checks and prove assertion-level failure; compilation/type failure "
-            "is invalid. Never change product code, generated product clients, or weaken an assertion. "
+            "Do not read product source paths under change or prior implementation attempts. "
+            "When a criterion is red_required, prove assertion-level failure; compilation/type failure "
+            "is invalid. When every criterion has red_required false because the tests need planned "
+            "product types or a generated client that does not exist yet, write 'Failure level: none', "
+            "name the missing members in words, and do not paste compiler output. Do not edit "
+            "red_required or other acceptance criteria. Never change product code, generated product "
+            "clients, or weaken an assertion. "
             "Write red-proof.md and a new tests-implementation-<n>.md report in the mutable artifact directory. "
             "In red-proof.md, cite every changed test file as a $ROOT-relative path in backticks "
-            "(`apaleo/test/...`, `development/src/tests/...`); repo-relative `test/...` under an "
+            "(`apaleo/e2e/tests/...`, `apaleo/test/...`, `identity/e2e/tests/...`, "
+            "`development/src/tests/payment/...`); repo-relative `test/...` under an "
             "`apaleo:` heading is not enough for the post-stage gate."
         ),
         "implement": (
             "Implement the plan, then progressively load and execute /test-and-fix inside this same provider "
             "session. Do not read prompt.md/the specify transcript or prior provider rationale. Treat red tests "
-            "as the contract during construction. In the verification/fix subphase, a test may change only for "
+            "as the contract during construction. The implement-tests checkpoint commit already holds those "
+            "files in the worktree. In the verification/fix subphase, a test may change only for "
             "a plan-settled fixture/setup defect; never weaken, skip, delete, quarantine, or loosen assertions. "
+            "The runner restores a skip, a deleted test, or a changed assertion from that commit. "
             "Run every manifest test command through the deterministic verification helper until it parses green: "
             f"python3 {ROOT / '.claude/skills/pipeline/verification.py'} {task!r} --root {str(ROOT)!r} --force. "
             "Perform required Swagger/proxy generation and local E2E autonomously with the stack lock and "
@@ -961,7 +981,9 @@ def stage_context(
             "applicable Tier 3 statement. Review in this order: specification violations, test gaps, "
             "correctness, then rules/conventions and repository-wide semantic reuse/DRY. Do not make a new "
             "product or architecture decision, but apply unambiguous plan-authorized correctness fixes "
-            "and same-behavior convention/DRY improvements within manifest paths. A detected Tier 1 violation "
+            "and same-behavior convention/DRY improvements within manifest paths. Do not skip, delete, or "
+            "loosen an assertion: the runner restores that edit from the implement-tests commit. "
+            "A detected Tier 1 violation "
             "is not advisory: repair it before completing the stage. After each repair, run the "
             "narrowest affected named check and record its evidence; stop after three repair/verify cycles and "
             "record only unresolved plan/behavior findings as advisory. Run the deterministic diff-scoped "
@@ -2491,6 +2513,187 @@ def build_runtime(args: argparse.Namespace) -> tuple[Path, dict, str]:
     return plan_dir, runtime, branch
 
 
+def _stage_commits_path(plan_dir: Path) -> Path:
+    return plan_branch_dir(plan_dir) / "stage-commits.json"
+
+
+def _load_stage_commits(plan_dir: Path) -> dict:
+    path = _stage_commits_path(plan_dir)
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save_stage_commits(plan_dir: Path, data: dict) -> None:
+    path = _stage_commits_path(plan_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def commit_checkpoint(branch: str, stage: str, plan_dir: Path) -> str:
+    """Local commit of a successful full-pipeline stage. Nothing is pushed."""
+    recorded = _load_stage_commits(plan_dir)
+    shas: dict[str, str] = {}
+    try:
+        for name, repo in worktrees(branch).items():
+            sha = commit_worktree(repo, checkpoint_message(branch, stage))
+            if sha:
+                shas[name] = sha
+    except TestJudgeError as exc:
+        raise PipelineError(f"checkpoint {stage} failed: {exc}") from exc
+    if not shas:
+        return f"checkpoint {stage}: nothing to commit"
+    recorded[stage] = shas
+    _save_stage_commits(plan_dir, recorded)
+    short = ", ".join(f"{name} {sha[:8]}" for name, sha in sorted(shas.items()))
+    return f"checkpoint {stage}: {short}"
+
+
+def checkpoint_already_recorded(branch: str, stage: str, plan_dir: Path) -> bool:
+    """True when this stage's commit is HEAD, or HEAD only adds a later test restore."""
+    shas = _load_stage_commits(plan_dir).get(stage) or {}
+    if not isinstance(shas, dict) or not shas or working_paths(branch):
+        return False
+    repos = worktrees(branch)
+    for name, sha in shas.items():
+        repo = repos.get(str(name))
+        if repo is None:
+            return False
+        head = git(repo, "rev-parse", "HEAD")
+        if head.returncode:
+            return False
+        current = head.stdout.strip()
+        if current == sha:
+            continue
+        ancestor = git(repo, "merge-base", "--is-ancestor", str(sha), "HEAD")
+        if ancestor.returncode:
+            return False
+        subjects = git(repo, "log", "--format=%s", f"{sha}..HEAD")
+        if subjects.returncode:
+            return False
+        lines = [line for line in subjects.stdout.splitlines() if line.strip()]
+        if not lines or any("checkpoint restore-tests" not in line for line in lines):
+            return False
+    return True
+
+
+def _last_test_editor(stage: str, stages: list[str], index: int) -> bool:
+    if stage not in {"implement", "review"}:
+        return False
+    return not any(later in {"implement", "review"} for later in stages[index + 1 :])
+
+
+def _run_judge_command(branch: str, command: dict) -> dict:
+    repo = ROOT / "worktrees" / branch / command["repo"]
+    argv = list(command["argv"])
+    timeout = int(command.get("timeout_seconds") or 1800)
+    environment = os.environ.copy()
+    environment.update({str(key): str(value) for key, value in (command.get("env") or {}).items()})
+    try:
+        process = subprocess.run(
+            argv,
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+            env=environment,
+        )
+        output = (process.stdout or "") + ("\nSTDERR:\n" + process.stderr if process.stderr else "")
+        passed, _parsed = parse_test_output(command, output, process.returncode)
+    except (OSError, subprocess.TimeoutExpired):
+        passed = False
+    return {"argv": argv, "passed": passed}
+
+
+def judge_test_edits(branch: str, plan_dir: Path, manifest: dict, *, keep_existing: bool = False) -> str:
+    """Restore obvious test cheats from the implement-tests commit and re-run the mapped command."""
+    baselines = _load_stage_commits(plan_dir).get("implement-tests") or {}
+    note_path = plan_branch_dir(plan_dir) / "test-judge.md"
+    if not isinstance(baselines, dict) or not baselines:
+        if note_path.is_file() and not keep_existing:
+            note_path.unlink()
+        return "test judge: no implement-tests checkpoint"
+    tests = manifest.get("test_paths") or []
+    restored: list[dict] = []
+    kept: list[dict] = []
+    unrestored: list[dict] = []
+    repos = worktrees(branch)
+    try:
+        for name, baseline in baselines.items():
+            repo = repos.get(str(name))
+            if repo is None:
+                continue
+            for path in changed_paths(repo, str(baseline)):
+                full = f"{name}/{path}"
+                if not path_allowed(full, tests):
+                    continue
+                diff = file_diff(repo, str(baseline), path)
+                kind, reason = classify_diff(diff)
+                if kind == "cheat":
+                    if restore_test_file(repo, str(baseline), path):
+                        restored.append(
+                            {"path": full, "reason": reason, "excerpt": diff_excerpt(diff)}
+                        )
+                    else:
+                        unrestored.append(
+                            {"path": full, "reason": f"{reason}; no implement-tests copy"}
+                        )
+                elif kind == "kept":
+                    kept.append({"path": full, "reason": reason})
+        if restored:
+            message = checkpoint_message(branch, "restore-tests")
+            for repo in repos.values():
+                commit_worktree(repo, message)
+    except TestJudgeError as exc:
+        raise PipelineError(f"test judge failed: {exc}") from exc
+    if not restored and not kept and not unrestored:
+        if keep_existing and note_path.is_file():
+            return "test judge: existing restore record kept"
+        if note_path.is_file():
+            note_path.unlink()
+        return "test judge: no test edits after implement-tests"
+    commands = [
+        _run_judge_command(branch, command)
+        for command in affected_commands(manifest, [item["path"] for item in restored])
+    ]
+    note_path.write_text(
+        render_report(restored, kept, unrestored, commands),
+        encoding="utf-8",
+    )
+    failed = bool(commands) and any(not item["passed"] for item in commands)
+    unproven = bool(restored) and not commands
+    if restored and (failed or unproven):
+        _record_restore_failure(plan_dir)
+    if failed:
+        return "test judge: restored tests failing locally"
+    if unproven:
+        return "test judge: restored tests; no acceptance command mapped"
+    if restored:
+        return "test judge: restored tests passed"
+    return "test judge: kept test edits that were not an obvious cheat"
+
+
+def _record_restore_failure(plan_dir: Path) -> None:
+    """The implement verification described the tree before the tests were restored."""
+    artifact = plan_branch_dir(plan_dir) / "verification.json"
+    if not artifact.is_file():
+        return
+    try:
+        payload = json.loads(artifact.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return
+    if not isinstance(payload, dict):
+        return
+    payload["status"] = "restored-tests-failing"
+    payload["test_judge"] = "restored tests failing locally"
+    artifact.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
 def reset_unverified_legacy_implementation(state: dict, manifest: dict) -> list[str]:
     """Do not let an old pre-folding implement completion bypass its retired test/fix gate."""
     legacy_selected = manifest.get("implementation_verification", {}).get(
@@ -2675,7 +2878,7 @@ def run(args: argparse.Namespace) -> int:
         run_plan_baseline = plan_contract_snapshot(plan_dir)
         if not args.no_sync_master and any(stage in stages for stage in ("implement-tests", "implement")):
             sync_master(branch, reporter)
-        for stage in stages:
+        for index, stage in enumerate(stages):
             ensure_parked_mains_unchanged(run_parked_baseline, branch)
             ensure_plan_contract_unchanged(plan_dir, run_plan_baseline)
             if stage == "commit-and-push":
@@ -2690,20 +2893,27 @@ def run(args: argparse.Namespace) -> int:
                         "current diff safety scan passed; implementation test evidence is not rerun during publish"
                     ),
                 )
+            resumed_checkpoint = False
             if stage in AI_STAGES:
-                evidence = run_ai_stage(
-                    stage,
-                    args.task,
-                    branch,
-                    plan_dir,
-                    manifest,
-                    health,
-                    circuits,
-                    run_dir,
-                    reporter,
-                    state,
-                    args,
-                )
+                resumed_checkpoint = checkpoint_already_recorded(branch, stage, plan_dir)
+                if resumed_checkpoint:
+                    evidence = f"resumed from checkpoint commit for {stage}"
+                    reporter.emit("stage_completed", stage=stage, message=evidence)
+                else:
+                    evidence = run_ai_stage(
+                        stage,
+                        args.task,
+                        branch,
+                        plan_dir,
+                        manifest,
+                        health,
+                        circuits,
+                        run_dir,
+                        reporter,
+                        state,
+                        args,
+                    )
+                    evidence = f"{evidence}\n{commit_checkpoint(branch, stage, plan_dir)}"
             else:
                 mark_started(
                     state,
@@ -2715,6 +2925,15 @@ def run(args: argparse.Namespace) -> int:
                 )
                 save_state(ROOT, args.task, state, plan_branch_dir(plan_dir))
                 evidence = run_script_stage(stage, branch, run_dir, reporter)
+            if _last_test_editor(stage, stages, index):
+                judge_note = judge_test_edits(
+                    branch,
+                    plan_dir,
+                    manifest,
+                    keep_existing=resumed_checkpoint,
+                )
+                evidence = f"{evidence}\n{judge_note}"
+                reporter.emit("test_judge", stage=stage, message=judge_note)
             ensure_parked_mains_unchanged(run_parked_baseline, branch)
             ensure_plan_contract_unchanged(plan_dir, run_plan_baseline)
             mark_complete(state, stage, evidence)

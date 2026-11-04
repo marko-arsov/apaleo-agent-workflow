@@ -45,7 +45,7 @@ In the full pipeline, `implement-tests` uses Cursor Claude Sonnet 5.5 high by de
 four or more planned test files or a substantial expected diff, with matching Claude Code fallback;
 implementation uses Cursor Grok 4.7 high. `/specify` offers review by estimate (1 skip; 2 Cursor Sonnet;
 3 Cursor Sol; 5 Cursor Opus) with editable ordered fallbacks. The user confirms the actual selection and
-route. Any valid confirmed provider/model can be shared across phases; diversity is a suggestion.
+route. The evaluator suggests a different lab for test authoring and review. Any confirmed provider/model remains valid, and an explicit route wins.
 `implement` then loads the complete `/test-and-fix`
 procedure in its own session, runs every named test command, parses output, and writes traceability
 evidence. `/test-and-fix` is no longer a regular pipeline stage.

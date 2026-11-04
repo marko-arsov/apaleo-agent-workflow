@@ -3,5 +3,10 @@
   "test_file_threshold": 4,
   "test_line_threshold": 300,
   "max_fallbacks": 2,
-  "stale_days": 30
+  "stale_days": 30,
+  "adversary_band_slack": 1,
+  "adversaries": {
+    "implement-tests": ["implement"],
+    "review": ["implement", "implement-tests"]
+  }
 }

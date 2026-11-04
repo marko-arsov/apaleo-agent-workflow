@@ -19,3 +19,5 @@ No issue, branch, or PR → follow `$ROOT/.claude/skills/references/feature-argu
 running the script. Ask only when that feature is not certain.
 
 Ambiguity (dirty worktree, diverged branch, lock held by another branch) → stop and ask. Do not investigate.
+
+If the script stops because development only still carries core E2E that origin/master already removed, do not stash, sync, or commit that checkout. Remove the development worktree and close its pull request, as the script says, then rerun `/commit` for the service repo.

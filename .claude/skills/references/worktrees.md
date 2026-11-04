@@ -68,8 +68,8 @@ Used by `specify`, `implement-tests`, `implement`, `checkout-branch`, and any sk
 1. Resolve `<target>` branch name.
 2. If no feature repo exists under `$WT` (or the existing checkouts are not on `<target>`) → follow **`worktree-start`** (create/reuse; do not invent a different branch). Product tickets use the default apaleo worktree. Team-plugin tickets that do not touch apaleo/development/identity use `--agent-skills-only`; Angular-client tickets that do not touch apaleo use `--angular-api-proxy-only`.
 3. **development:**
-   - Required when plan/e2e/PR says so, or when `origin/<target>` exists on development and the skill needs that repo → ensure `$WT/development` via `worktree-start`.
-   - Not needed → do not create a development worktree “just in case.”
+   - Required when the plan changes payment E2E (`src/tests/payment`) or another file that still lives in development, or when `origin/<target>` exists on development and the skill needs that repo → ensure `$WT/development` via `worktree-start`.
+   - Core, identity, and other migrated-service E2E live in that service's `e2e/` directory. Do not create a development worktree for those tests. If one remains and its own changes are only core E2E that origin/master already removed, remove that checkout and close its pull request. Do not merge master into it.
 4. **identity** (same pattern; see `references/identity.md`):
    - Required when plan/Identity verdict says so, or when `origin/<target>` exists on identity and the skill needs that repo → ensure `$WT/identity` via `worktree-start --with-identity`.
    - Not needed → do not create an identity worktree “just in case.”
@@ -102,7 +102,7 @@ git -C $ROOT/apaleo fetch --prune
 git -C $ROOT/apaleo worktree add -b <branch> "$ROOT/worktrees/<branch>/apaleo" origin/master
 ```
 
-Same for development when e2e needs a branch, identity when the Identity verdict says needed, agent-skills when the ticket is team-plugin work, and angular-api-proxy when the Angular clients or their generator change (`worktree-start.sh <branch> --from-master --agent-skills-only` / `--angular-api-proxy-only` when apaleo is out of scope). For another `apaleo` org repository named by the ticket, add `--with <name>` on that same command. **Identical `<branch>` name.** Do **not** `git switch -c` in the main checkout.
+Same for development when payment E2E or another file that still lives in development changes, identity when the Identity verdict says needed, agent-skills when the ticket is team-plugin work, and angular-api-proxy when the Angular clients or their generator change (`worktree-start.sh <branch> --from-master --agent-skills-only` / `--angular-api-proxy-only` when apaleo is out of scope). Core and other migrated-service E2E stay on that service's branch. For another `apaleo` org repository named by the ticket, add `--with <name>` on that same command. **Identical `<branch>` name.** Do **not** `git switch -c` in the main checkout.
 
 ## Stacked branch (specify only)
 

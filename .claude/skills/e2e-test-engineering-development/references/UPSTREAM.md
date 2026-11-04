@@ -7,9 +7,9 @@
 ## Changes from upstream
 
 - Added **Local facts** table: Jest 27, paths, commands, auth, Docker localhost, cross-repo branches, proxy regen, timeouts.
-- Documented **never run `npm test` locally**; prefer `npm run test:file` / `test:core`.
+- Documented **never run the full Jest suite locally**. One file is `yarn test -- tests/<area>/<file>-spec.ts` from the service `e2e/` directory. Payment still uses `npm run test:file`.
 - Added **destructive/shared-env gate** for staging/production.
-- Added domain → `src/tests/…` heuristic map.
+- Specs for migrated services live in `<service>/e2e/tests`. Payment remains `development/src/tests/payment`.
 - Marked page-objects/selectors as typically `n/a` for this HTTP API suite.
 - Pointed at `development/AGENTS.md` and `.cursor/rules/*.mdc`.
 - Wired Confirm RED to the real filtered command.

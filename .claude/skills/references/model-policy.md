@@ -17,7 +17,7 @@ The seed registry is a dated qualitative starting point, not benchmark truth.
 Official source URLs and review dates accompany its model/effort assessments.
 New model IDs appear in `unreviewed_models`. Add relevant reviewed entries through
 scope settings; no package edit is required. A registry entry has `provider`,
-`model`, `family`, `band` (`fast`, `strong`, `deep`), `stages`, nonnegative `rank`
+`model`, `family`, `lineage` (lab slug such as `anthropic`, `openai`, or `xai`), `band` (`fast`, `strong`, `deep`), `stages`, nonnegative `rank`
 (lower is preferred), `confidence` (`reviewed` or `provisional`), `sources` and
 `reviewed_at`. Optional `efforts` maps `simple`, `balanced`, `demanding` to supported
 host values. Cursor instead uses exact IDs, `encoded_effort`, and a `modes` array.
@@ -82,6 +82,12 @@ optionally records explicit user route arrays. Mechanical stages are ignored.
 Run `models evaluate --input facts.json --output model-selection.json` once. The
 normal output is concise; `--verbose` shows provenance. There are no network,
 provider or extra model calls. No effort question or extra approval gate is added.
+`implement` is selected first. `implement-tests` avoids that lab, and `review` avoids
+both. A different lineage at the required band wins over a better rank in a lab already
+used. When the required band has only one lab, an adversary stage may step one band
+down and records `adversary-below-band`. When no other lab exists even then, the best
+in-band model is kept and the stage records `single-lineage`. Explicit routes are
+left unchanged. Neither advisory blocks execution.
 Small low-risk docs/config use the fast band; routine work uses strong; uncertainty,
 high risk and large multi-repository work use deep for affected stages. Four planned
 test files or 300 expected test lines escalate test authoring. Numeric facts must be
@@ -95,6 +101,16 @@ do not include a non-executable stage in the full route snapshot. An unresolved
 selection may be discussed while planning but cannot be executed. Explicit pins
 below the recommended capability produce advisory feedback, not silent replacement.
 For manual work, keep the compact route table; no detached pipeline is required.
+
+`models watch` reads `AA_API_KEY` from the environment or `~/.config/apaleo-models.env`
+and stores a cited snapshot from `GET /api/v2/language/models/free` at
+`models/watch.json`. The free list is the headline intelligence index, capability
+indexes, median speed, and input/output price. It does not change routes, ranks, or
+approved plans. The report names new and removed Anthropic, OpenAI, and SpaceXAI
+slugs since the previous snapshot, recent releases, the alias for each confirmed
+default, and any default id missing from the host catalogue. Attribute displayed
+figures to https://artificialanalysis.ai/. A missing key or a failed fetch leaves
+the previous snapshot in place.
 
 A missing/stale catalogue keeps valid configured routes and adds one notice. Optional
 missing effort metadata uses a valid host default; it does not block work. Saved

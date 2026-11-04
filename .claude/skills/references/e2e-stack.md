@@ -1,6 +1,6 @@
 # Local E2E stack — lock + FIFO wait queue
 
-The Docker Compose API stack used by `development` E2E is **machine-global**, not per-worktree. Worktrees isolate git; they do **not** isolate ports or compose.
+The Docker Compose API stack in `development` is **machine-global**, not per-worktree. Jest specs for migrated services run from that service's `e2e/` directory against this same stack. Worktrees isolate git; they do **not** isolate ports or compose.
 
 Helper script (preferred): `$ROOT/.claude/skills/references/e2e-stack-lock.sh`  
 Also read `$ROOT/.claude/skills/references/worktrees.md`.
@@ -11,7 +11,7 @@ Also read `$ROOT/.claude/skills/references/worktrees.md`.
 |---|---|
 | **`implement` verify/fix** | **Waits** on the queue for plan-required localhost E2E (`acquire --wait`). Build/unit run first without the lock. |
 | **manual `test-and-fix`** | Uses the same queue after PR/manual changes. |
-| **`e2e-test-engineering-development`** | If running `test:file` during TDD: `acquire --wait`. Prefer deferring green E2E to implement's verify/fix subphase. |
+| **`e2e-test-engineering-development`** | If running one Jest file during TDD: `acquire --wait`. Prefer deferring green E2E to implement's verify/fix subphase. |
 | `review` | No E2E. May repair missing planned Swagger/proxy output under the same lock/snapshot/restore contract. |
 | `specify` / plan | No stack. |
 

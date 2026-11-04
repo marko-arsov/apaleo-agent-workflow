@@ -57,6 +57,17 @@ ensure_repo() {
   return 0
 }
 
+# Migrated services keep Jest specs under e2e/. Payment still uses development/src/tests.
+owns_service_e2e() {
+  local dest="$1"
+  git -C "$dest" diff --name-only "origin/$BASE...HEAD" -- e2e | grep -q .
+}
+
+owns_development_e2e() {
+  local dest="$1"
+  git -C "$dest" diff --name-only "origin/$BASE...HEAD" -- src/tests | grep -q .
+}
+
 create_or_note() {
   local dest="$1" name="$2" title="$3" body="$4"
   local existing out
@@ -69,9 +80,23 @@ create_or_note() {
   echo "$name: $out"
 }
 
+append_judge() {
+  local body="$1"
+  local note="$PLAN_ROOT/test-judge.md"
+  if [[ ! -f "$note" ]]; then
+    printf '%s' "$body"
+    return
+  fi
+  if grep -q '^## Restored tests' <<<"$body" || grep -q '^## Test edits kept' <<<"$body"; then
+    printf '%s' "$body"
+    return
+  fi
+  printf '%s\n\n%s' "$body" "$(cat "$note")"
+}
+
 new_body() {
   local title="$1" related="$2" e2e="$3"
-  deterministic_sections "$title" "$related" "$e2e"
+  append_judge "$(deterministic_sections "$title" "$related" "$e2e")"
 }
 
 edit_pr() {
@@ -82,7 +107,7 @@ edit_pr() {
   current_title="$(cd "$dest" && gh pr view --json title -q .title)"
   body_file="$(mktemp)"
   (cd "$dest" && gh pr view --json body -q .body) >"$body_file"
-  patched="$(python3 "$HELPER" refresh --product "$PRODUCT" --implementation "$IMPLEMENTATION" --sql "$SQL" --title "$title" --related "$related" --e2e "$e2e" <"$body_file")"
+  patched="$(append_judge "$(python3 "$HELPER" refresh --product "$PRODUCT" --implementation "$IMPLEMENTATION" --sql "$SQL" --title "$title" --related "$related" --e2e "$e2e" <"$body_file")")"
   needs="$(python3 "$HELPER" title-needs-replace --current "$current_title" --issue "$ISSUE" --wanted "$title")"
   if [[ "$needs" == "yes" ]] || ! cmp -s "$body_file" <(printf '%s' "$patched"); then
     (cd "$dest" && gh pr edit --title "$title" --body "$patched") >/dev/null
@@ -158,21 +183,35 @@ AS_BODY=""
 AAP_BODY=""
 RELATED_BASE="$(python3 "$HELPER" related --issue "$ISSUE" --linear "$LINEAR")"
 
+DEV_OWNS_E2E=0
+[[ "$HAVE_DEV" -eq 1 ]] && owns_development_e2e "$DEV_DEST" && DEV_OWNS_E2E=1 || true
+
 if [[ "$HAVE_APALEO" -eq 1 ]]; then
   APALEO_TITLE="$(python3 "$HELPER" title --issue "$ISSUE" --prompt "$PROMPT" --product "$PRODUCT" --implementation "$IMPLEMENTATION" --repo apaleo)"
-  APALEO_E2E="[link to PR with E2E tests]"
-  [[ "$HAVE_DEV" -eq 1 ]] || APALEO_E2E="N/A — no e2e changes"
+  APALEO_E2E="N/A — no e2e changes"
+  if owns_service_e2e "$APALEO_DEST"; then
+    APALEO_E2E="this PR"
+  elif [[ "$DEV_OWNS_E2E" -eq 1 ]]; then
+    APALEO_E2E="[link to PR with E2E tests]"
+  fi
   APALEO_BODY="$(new_body "$APALEO_TITLE" "$RELATED_BASE" "$APALEO_E2E")"
   create_or_note "$APALEO_DEST" apaleo "$APALEO_TITLE" "$APALEO_BODY"
 fi
 if [[ "$HAVE_DEV" -eq 1 ]]; then
   DEV_TITLE="$(python3 "$HELPER" title --issue "$ISSUE" --prompt "$PROMPT" --product "$PRODUCT" --implementation "$IMPLEMENTATION" --repo development)"
-  DEV_BODY="$(new_body "$DEV_TITLE" "$RELATED_BASE" "this PR")"
+  DEV_E2E="N/A — no e2e changes"
+  [[ "$DEV_OWNS_E2E" -eq 1 ]] && DEV_E2E="this PR"
+  DEV_BODY="$(new_body "$DEV_TITLE" "$RELATED_BASE" "$DEV_E2E")"
   create_or_note "$DEV_DEST" development "$DEV_TITLE" "$DEV_BODY"
 fi
 if [[ "$HAVE_ID" -eq 1 ]]; then
   ID_TITLE="$(python3 "$HELPER" title --issue "$ISSUE" --prompt "$PROMPT" --product "$PRODUCT" --implementation "$IMPLEMENTATION" --repo identity)"
   ID_E2E="N/A — no e2e changes"
+  if owns_service_e2e "$ID_DEST"; then
+    ID_E2E="this PR"
+  elif [[ "$DEV_OWNS_E2E" -eq 1 ]]; then
+    ID_E2E="[link to PR with E2E tests]"
+  fi
   ID_BODY="$(new_body "$ID_TITLE" "$RELATED_BASE" "$ID_E2E")"
   create_or_note "$ID_DEST" identity "$ID_TITLE" "$ID_BODY"
 fi
@@ -189,7 +228,13 @@ fi
 for extra_name in "${EXTRA_READY[@]:-}"; do
   [[ -n "$extra_name" ]] || continue
   extra_title="$(python3 "$HELPER" title --issue "$ISSUE" --prompt "$PROMPT" --product "$PRODUCT" --implementation "$IMPLEMENTATION" --repo "$extra_name")"
-  extra_body="$(new_body "$extra_title" "$RELATED_BASE" "N/A — no e2e changes")"
+  extra_e2e="N/A — no e2e changes"
+  if owns_service_e2e "$WT/$extra_name"; then
+    extra_e2e="this PR"
+  elif [[ "$DEV_OWNS_E2E" -eq 1 ]]; then
+    extra_e2e="[link to PR with E2E tests]"
+  fi
+  extra_body="$(new_body "$extra_title" "$RELATED_BASE" "$extra_e2e")"
   create_or_note "$WT/$extra_name" "$extra_name" "$extra_title" "$extra_body"
 done
 
@@ -219,15 +264,23 @@ ID_RELATED="$RELATED_BASE"
 AS_RELATED="$RELATED_BASE"
 AAP_RELATED="$RELATED_BASE"
 APALEO_E2E_FINAL="N/A — no e2e changes"
-DEV_E2E_FINAL="this PR"
+DEV_E2E_FINAL="N/A — no e2e changes"
 ID_E2E_FINAL="N/A — no e2e changes"
 AS_E2E_FINAL="N/A — no e2e changes"
 AAP_E2E_FINAL="N/A — no e2e changes"
-if [[ -n "$DEV_URL" ]]; then
+[[ "$DEV_OWNS_E2E" -eq 1 ]] && DEV_E2E_FINAL="this PR"
+if [[ "$HAVE_APALEO" -eq 1 ]] && owns_service_e2e "$APALEO_DEST"; then
+  APALEO_E2E_FINAL="this PR"
+  if [[ "$DEV_OWNS_E2E" -eq 1 && -n "$DEV_URL" ]]; then
+    APALEO_E2E_FINAL="this PR; payment: $DEV_URL"
+  fi
+elif [[ "$DEV_OWNS_E2E" -eq 1 && -n "$DEV_URL" ]]; then
   APALEO_E2E_FINAL="$DEV_URL"
+fi
+if [[ "$HAVE_ID" -eq 1 ]] && owns_service_e2e "$ID_DEST"; then
+  ID_E2E_FINAL="this PR"
+elif [[ "$DEV_OWNS_E2E" -eq 1 && -n "$DEV_URL" ]]; then
   ID_E2E_FINAL="$DEV_URL"
-  AS_E2E_FINAL="$DEV_URL"
-  AAP_E2E_FINAL="$DEV_URL"
 fi
 if [[ -n "$APALEO_URL" ]]; then
   DEV_RELATED="$(python3 "$HELPER" related --issue "$ISSUE" --linear "$LINEAR" --extra "apaleo PR: $APALEO_URL")"
@@ -260,7 +313,11 @@ for extra_name in "${EXTRA_READY[@]:-}"; do
   extra_related="$RELATED_BASE"
   [[ -n "$APALEO_URL" ]] && extra_related="$(python3 "$HELPER" related --issue "$ISSUE" --linear "$LINEAR" --extra "apaleo PR: $APALEO_URL")"
   extra_e2e="N/A — no e2e changes"
-  [[ -n "$DEV_URL" ]] && extra_e2e="$DEV_URL"
+  if owns_service_e2e "$WT/$extra_name"; then
+    extra_e2e="this PR"
+  elif [[ "$DEV_OWNS_E2E" -eq 1 && -n "$DEV_URL" ]]; then
+    extra_e2e="$DEV_URL"
+  fi
   edit_pr "$WT/$extra_name" "$extra_title" "$extra_related" "$extra_e2e"
 done
 
