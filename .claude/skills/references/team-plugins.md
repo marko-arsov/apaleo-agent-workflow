@@ -11,7 +11,7 @@ Feature contributions belong in `$WT/agent-skills`, never the parked clone. Afte
 | `clean-code` | `/clean-code` | Authority on C# cleanliness |
 | `review-guide` | `/review-guide` only | Human walkthrough — does not fix; cannot preload |
 | `e2e-test-engineering` | `/e2e-test-engineering` | Upstream generic E2E process |
-| `e2e-test-engineering-development` | `/e2e-test-engineering-development` | Specialized for `development/` — pipeline default |
+| `e2e-test-engineering-development` | `/e2e-test-engineering-development` | Service-repo Jest E2E — pipeline default. Payment stays in `development` |
 | `setup-new-service` | `/scaffold`, `/wire`, `/audit` | **Never automatic** — confirm first |
 | `keep-linear-updated` | `/keep-linear-updated` | Ensure a Linear issue exists; In Progress when implementing |
 | `linear-issue-writer` | `/linear-issue-writer` | Draft, rewrite, or decompose Linear issues |

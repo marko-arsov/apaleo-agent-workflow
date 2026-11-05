@@ -42,6 +42,17 @@ This table is guidance. The user confirms the lane during `/specify`.
 comment fixes. It is not selectable as a regular stage. A v1 manifest that selected it is translated
 in memory so its validation still runs inside `implement`; the plan file is not rewritten.
 
+After `implement-tests`, `implement`, and `review` succeed, the runner makes one local commit.
+A failed stage stays dirty. `/commit-and-push` publishes that history. The manual lane does not
+make these commits.
+
+When `implement` or `review` changes a `test_paths` file, the runner compares it with the
+`implement-tests` commit. An import or comment edit stays. A setup or helper edit stays and is
+named. A skip, a deleted test, or an assertion that was removed or rewritten is restored from
+that commit, and the acceptance command for that file runs once. A passing re-run is a real
+success. A failing re-run still publishes, and the draft PR names the restored hunk and the
+failing command. That result is not recorded as a passed verification.
+
 Implementation and publishing safety checks remain enforced. Review is advisory: provider/report,
 convention, reuse, build, and environment issues are recorded and delivery continues. Comment
 handling, CI diagnosis, and staging smoke remain manual skills.
@@ -51,7 +62,7 @@ handling, CI diagnosis, and staging smoke remain manual skills.
 `/update-models` proposes independent machine/workspace model defaults. Every `/specify` evaluates
 selected stages offline using `model-policy.md`; the confirmed manifest saves model, effort and
 ordered fallbacks. Routine work uses reviewed balanced effort; maximum effort is explicit only.
-Publishing stays mechanical. Explicit routes remain authoritative and route diversity is advisory.
+Publishing stays mechanical. The evaluator suggests different labs for test authoring and review. Explicit routes remain authoritative, and a missing alternate is an advisory.
 One-run overrides never modify the plan.
 
 ## Stacked plans

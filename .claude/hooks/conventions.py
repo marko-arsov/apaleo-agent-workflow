@@ -268,7 +268,7 @@ def hook_stdout(findings: list[dict]) -> tuple[dict, int]:
 
 
 def _compare_ref(branch: str, repo: Path) -> str:
-    """origin/master, or the fork point when the branch's plan is stacked on another branch."""
+    """Merge-base of HEAD and the plan base. Falls back to origin/master when no plan exists."""
     try:
         return diff_base(ROOT, branch, repo)
     except ManifestError:

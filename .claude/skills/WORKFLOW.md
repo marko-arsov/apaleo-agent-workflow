@@ -31,7 +31,7 @@ implement-tests? → implement → review? → commit-and-push? → draft-pr?
 
 | Stage | Contract |
 |---|---|
-| `implement-tests` | Required when tests change. Test paths only; produces assertion-level `red-proof.md`. |
+| `implement-tests` | Required when tests change. Test paths only. Produces assertion-level `red-proof.md` when a criterion is `red_required`; otherwise `Failure level: none` when the tests cannot run until planned product types exist. |
 | `implement` | Always required. Builds product code, then runs the complete verify/fix procedure and named commands in the same session. |
 | `review` | Optional independent fresh-context review against the specification, tests, rules, and semantic reuse/DRY. In the pipeline it receives the current `/add-rule` inventory, applies safe plan-authorized corrections and same-behavior improvements, verifies narrowly, and reruns the deterministic rule scan; Tier-1 violations must be repaired, while plan/behavior findings remain advisory. Direct `/review <branch> [focus]` is check-only and asks for confirmation when the review basis or solution is ambiguous, then hands confirmed changes to `/specify` and `/implement`. |
 | `commit-and-push` | Optional deterministic safety scan, commit, and non-force push. |
@@ -39,7 +39,10 @@ implement-tests? → implement → review? → commit-and-push? → draft-pr?
 
 `/test-and-fix` remains a reusable procedure loaded by `/implement`, and a manual after-PR tool. It
 is not a top-level stage. Version-1 manifests are translated in memory; their files remain unchanged.
-Implementation and publish safety gates fail closed; review is advisory.
+Implementation and publish safety gates fail closed; review is advisory. Each successful
+`implement-tests`, `implement`, and `review` gets one local commit. A later skip, deleted test,
+or changed assertion is restored from the implement-tests commit and the affected command runs
+once. A failing restore still publishes, with that failure named on the draft PR.
 
 ## Simple manual lane
 
@@ -52,7 +55,8 @@ For a small, contained follow-up—especially an addition to an already-develope
 
 This is a first-class lane, not a reduced-quality pipeline run: `/specify` writes a concise,
 decision-complete plan and `/implement` owns tests plus implementation in one session. It creates no
-`implement-tests` handoff, pipeline run, review stage, or publish queue. `/implement` still follows
+`implement-tests` handoff, pipeline run, review stage, or publish queue. Stage commits and the
+test-edit restore run only in the full pipeline. `/implement` still follows
 the established-pattern, path, authorization, and test rules; it does not commit or push.
 
 ## Bugfix posture
@@ -97,7 +101,8 @@ Agent Flow remains independent. The shared evaluator is a versioned local snapsh
 link to another workflow. See `references/model-policy.md` for the settings and evidence contract.
 
 Every `/specify`, including manual work, evaluates the selected stages offline with no extra
-model call. Balanced model-specific effort is preferred; difficult or risky stages can escalate.
+model call. Implementation, test authoring, and review are placed on different labs when a
+reviewed model in band exists. Balanced model-specific effort is preferred; difficult or risky stages can escalate.
 Maximum effort requires an explicit choice. Missing optional metadata adds no questionnaire.
 Existing pins remain fixed, and approved plans retain their saved routes after defaults change.
 Review stays optional, and commit/push/PR stages remain mechanical. Legacy tables are retained
@@ -119,8 +124,11 @@ important isolation gap instead of pretending prose is an OS sandbox.
 
 The deterministic gates verify outcomes rather than stage claims:
 
-- `implement-tests` cannot change product paths; every mapped test must reach an assertion-level
-  failure, never a compile/setup failure;
+- `implement-tests` cannot change product paths. A criterion with `red_required: true` must reach an
+  assertion-level failure, never a compile/setup failure. When the tests name product types or
+  generated-client fields that do not exist yet, specify sets `red_required: false` and the proof is
+  `Failure level: none` (missing members named in words, no compiler output). The stage does not
+  edit `red_required` to satisfy the gate;
 - an interrupted `implement-tests` handoff with valid current `red-proof.md` and
   `tests-implementation-<n>.md` is re-verified and marked complete on normal resume, avoiding
   needless test-author reruns;
@@ -277,6 +285,16 @@ without a yes. Production is never written. Details: `references/support-rotatio
 
 No item adds a recurring model call.
 
+## Where E2E tests live
+
+Core Jest specs live in the apaleo repo at `e2e/tests`. Generated clients live at `e2e/proxy/<module>`. Identity and the other migrated services use the same `e2e/tests` and `e2e/proxy/<proxy>` layout in that service repo. Shared account setup comes from the published `@apaleo/e2e-sdk-lib` package. Payment is the exception: its specs stay in `development/src/tests/payment`.
+
+A migrated service does not get a development companion branch for tests. One PR in the service repo contains the product change and its E2E specs. An in-flight plan or open development PR that still changes those specs should move them into the service repo and drop the development companion. Swagger generation, proxy generation, the E2E run, and proxy publishing are Jenkins shared-library steps. Proxy packages publish on merge to master.
+
+`/commit` and `/sync-master` read every attached worktree. A development checkout whose own changes are only core E2E that master already removed is not part of the service commit. Remove that worktree and close its pull request before committing or syncing. Do not merge master into it to clear the secret scan. The scan compares the working tree with the merge-base of `HEAD` and `origin/master`, so files master deleted after the branch forked are not treated as new secrets.
+
+Local one-file run, from that repo's `e2e/` directory, needs GitHub Packages auth (`NPM_CONFIG_USERCONFIG=$HOME/.npmrc` or a `.npmrc` in the `e2e/` folder): `yarn test -- tests/<area>/<file>-spec.ts`. Never run the full suite locally. The Docker Compose stack still lives in `development`. Payment still uses `npm run test:file` there.
+
 ## Safety invariants
 
 - Feature code only under `worktrees/<branch>/`; parked mains stay on `master`.
@@ -293,6 +311,38 @@ No item adds a recurring model call.
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-11-04: The full pipeline commits `implement-tests`, `implement`, and `review` locally
+  after each one succeeds. A later skip, deleted test, or changed assertion is restored
+  from the implement-tests commit and the affected command runs once. A passing re-run
+  succeeds. A failing re-run still publishes, and the draft PR records the restored hunk
+  and the failing command instead of a passed verification. The manual lane is unchanged.
+
+- 2026-11-04: Pre-commit and diff budgets compare the working tree with the merge-base
+  of `HEAD` and `origin/master`, so files master deleted after the branch forked
+  are not scanned as additions. `/commit` and `/sync-master` stop when a
+  development checkout only still carries that removed core E2E. Drop that
+  worktree and close its pull request; do not merge master into it to clear
+  the secret scan.
+
+- 2026-11-04: Jest E2E for core and the other migrated services lives in that service
+  repo (`e2e/tests`, generated `e2e/proxy/<module>`, shared `@apaleo/e2e-sdk-lib`).
+  Payment stays in `development/src/tests/payment`. Plans, test authoring, draft
+  PRs, and the local one-file command follow the service repo. A development
+  companion PR is only for payment. In-flight development PRs that still change
+  migrated-service specs should move those specs into the service repo.
+
+- 2026-10-29: The offline evaluator keeps `implement`, `implement-tests`, and `review` on
+  different labs when a reviewed model allows it. A missing alternate is an advisory,
+  and an explicit route is left as confirmed. `models watch` stores the free
+  Artificial Analysis snapshot for `/update-models` and does not change routes.
+  Approved plans keep their saved snapshots.
+
+- 2026-10-29: Compile-blocked tests are a normal `implement-tests` case. When new tests cannot be
+  discovered until planned product types or a generated client exist, `red_required` is false and
+  `red-proof.md` declares `Failure level: none`. Assertion-level red stays required only for
+  criteria that can fail an assertion before product code. The stage does not rewrite
+  `red_required`.
 
 - 2026-10-22: The machine default for `implement-tests` is Cursor Claude Sonnet 5.5 high
   (`claude-sonnet-5-5-high`). Direct invocation uses that model. A current catalogue still

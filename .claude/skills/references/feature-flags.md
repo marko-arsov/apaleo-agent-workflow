@@ -13,8 +13,8 @@ Agents **must** read this when a change introduces, depends on, or removes a rol
 
 If unsure which one the ticket means, ask. Helpers:
 
-- ConfigCat-style: `development/src/lib/helpers/config/features.ts`
-- Property settings: `development/src/lib/helpers/settings/features.ts`
+- ConfigCat-style: `apaleo/e2e/tests/helpers/features.ts`
+- Property settings: `apaleo/e2e/tests/helpers/settings/features.ts`
 
 ## Architecture
 
@@ -47,8 +47,9 @@ Key code:
 | Cache | `apaleo/src/Apaleo.Core/Services/CachedFeatureSettingsProvider.cs` |
 | Flag constants | `apaleo/src/Apaleo.Core/Common/Constants.cs` → `Constants.FeatureFlags` |
 | Client factory | `apaleo/src/Apaleo.Core/ClientFactories/FeatureConfigApiFactory.cs` |
-| E2E helpers | `development/src/lib/helpers/config/features.ts` |
-| E2E contract | `development/src/tests/config/feature-settings-spec.ts` |
+| E2E helpers | `apaleo/e2e/tests/helpers/features.ts` |
+| Property FeatureSettings helpers | `apaleo/e2e/tests/helpers/settings/features.ts` |
+| E2E specs | `apaleo/e2e/tests/settings/` |
 | Cleanup skills | `apaleo/.agents/skills/remove-feature-flag/`, `development/.agents/skills/remove-feature-flag/` |
 | Code refs scan | `apaleo/.github/workflows/configCatScan.yml` (master) |
 
@@ -65,7 +66,7 @@ Key code:
 3. Add `public const string …` to `Constants.FeatureFlags`.
 4. Gate with `IFeatureSettingsProvider.GetFeatureFlagAsync(Constants.FeatureFlags.X, propertyId?, countryCode?)`. Prefer validators / `BusinessValidationException` for new public APIs when disabled.
 5. Unit tests: Moq the provider — never call Config API from unit tests.
-6. E2E: add a named helper in `lib/helpers/config/features.ts`; `beforeAll` enable / `afterAll` restore. Use property/country args when targeting requires them.
+6. E2E: add a named helper in `apaleo/e2e/tests/helpers/features.ts`; `beforeAll` enable / `afterAll` restore. Use property/country args when targeting requires them.
 7. Do **not** add per-flag keys to apaleo `appsettings` or invent `FEATURE_X` env vars in core.
 8. Plan a **cleanup** issue (`featureFlagCleanup` / `remove-feature-flag` skills) after full rollout.
 9. In the plan and in chat, always include a **Setup for humans** section (template below).

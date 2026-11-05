@@ -41,6 +41,13 @@ if (( ${#DIRTY_REPOS[@]} == 0 )); then
   exit 0
 fi
 
+# A development checkout that only still has core E2E master already removed
+# must be dropped before the scan. The scan otherwise reads that whole branch.
+if ! leftover="$(python3 "$ROOT/.claude/skills/pipeline/verification.py" \
+  "$BRANCH" --root "$ROOT" --leftover-development)"; then
+  die_ask "$leftover"
+fi
+
 # Fast deterministic safety gate only. Project tests remain owned by
 # implement/review; this checks the diff for conventions and secrets.
 python3 "$ROOT/.claude/skills/pipeline/verification.py" \

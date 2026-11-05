@@ -98,7 +98,8 @@ full pipeline. The full-pipeline confirmation includes distinct questions for:
 
 For every specification, run the offline evaluator described in `model-policy.md` using the task
 facts already gathered. For the full pipeline show its compact model/effort/fallback table in the
-existing route confirmation; add no separate effort questionnaire. For manual work the result is
+existing route confirmation, including any `adversary-below-band` or `single-lineage`
+advisory. Those advisories do not block the stage. Add no separate effort questionnaire. For manual work the result is
 informational and never switches the current session. Review remains optional: an estimate can
 inform whether to offer review but no longer fixes its model. Save the approved evaluator snapshot
 with `--model-selection`; its recorded routes are authoritative after defaults refresh.
@@ -119,7 +120,7 @@ For the full pipeline, name every E2E test `/implement-tests` must write and eve
 implementation verification subphase must run. Give every command a stable id, repository, argv
 array, output parser, and acceptance evidence pattern. For the manual lane, name only the focused
 tests and commands `/implement` must run; never say only “add E2E coverage” or “run relevant tests.”
-Never prescribe local full `npm test`.
+Never prescribe a local full Jest suite. Core and other migrated-service E2E paths are `<service>/e2e/tests/...` (core: `apaleo/e2e/tests/...`), run as `yarn test -- tests/<area>/<file>-spec.ts` from that `e2e/` directory. Payment paths stay `development/src/tests/payment/...`. Do not plan a development companion branch for a migrated service.
 
 For a defect, the named regression check must fail for the original bad behavior before the product
 fix and pass afterward. A check that only executes the changed code is not enough. If a true
@@ -138,7 +139,7 @@ elevated risk; mutation testing remains explicit and diff-scoped only.
 After all answers are confirmed, create/reuse matching worktrees under
 `$ROOT/worktrees/<branch>/{apaleo?,development?,identity?,agent-skills?,angular-api-proxy?}` from `origin/master`; parked mains stay
 on `master`. When the ticket names another `apaleo` org repository, confirm it and add `--with <name>`
-plus manifest `--extra-repo <name>`. Product tickets create apaleo (plus development/identity when needed). Team-plugin work that does
+plus manifest `--extra-repo <name>`. Product tickets create apaleo. Add development only for payment E2E or another file that still lives in development, and identity when the Identity verdict says so. Core E2E is inside the apaleo worktree (`e2e/tests`, `e2e/proxy`). Team-plugin work that does
 not touch apaleo/development/identity uses `worktree-start.sh <branch> --from-master --agent-skills-only`, and
 Angular-client work that does not touch apaleo uses `--angular-api-proxy-only` — do
 not create an apaleo worktree “just in case.” Write:
@@ -178,6 +179,13 @@ python3 "$ROOT/.claude/skills/pipeline/pipeline_manifest.py" create \
   --expected-files 4 --max-files 6 --expected-lines 180 --max-lines 300 \
   --risk standard --risk-confirmed yes
 ```
+
+Set `red_required` to true only when that test can be discovered and fail an assertion before any
+product code exists. When the test names a product type, member, or generated-client field that
+does not exist yet, set `red_required` to false. `implement-tests` then records `Failure level:
+none` and names the missing members in words, without compiler output. That is a normal case, not
+a plan defect. Assertion-level red for those criteria, when the plan still wants it, is recorded
+during `implement` after the skeleton exists. Do not mark a compile-blocked test `red_required: true`.
 
 For a plan stacked on an unmerged feature branch, add `--base-branch <branch>` (see
 `worktrees.md` § Stacked branch).

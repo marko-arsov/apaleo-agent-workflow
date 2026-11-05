@@ -61,8 +61,8 @@ Manual recovery
 
 Default AI routes
 -----------------
-  /update-models   confirmed machine/project model and effort defaults
-  /specify         offline task evaluator; approved routes remain frozen
+  /update-models   confirmed machine/project model and effort defaults; watch records cited evidence
+  /specify         offline task evaluator; different labs when available; approved routes remain frozen
 
 Audit
 -----

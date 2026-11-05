@@ -112,9 +112,11 @@
       "description": "data-authz specs cover filtered GET/list payloads; write 403s belong in *-authz-spec.ts.",
       "severity": "advisory",
       "file_globs": [
+        "**/e2e/tests/**/*data-authz-spec.ts",
         "development/src/tests/**/*data-authz-spec.ts"
       ],
       "allowed_paths": [
+        "**/e2e/tests/**/*data-authz-clients-spec.ts",
         "development/src/tests/**/*data-authz-clients-spec.ts"
       ],
       "patterns": [

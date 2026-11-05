@@ -13,8 +13,10 @@ sys.path.insert(0, str(PIPELINE))
 
 from pipeline_manifest import make_manifest  # noqa: E402
 from verification import (  # noqa: E402
+    _added_diff,
     _budget_result,
     diff_stats,
+    leftover_core_e2e_message,
     VerificationError,
     assert_no_new_decisions,
     assert_review_gates,
@@ -84,6 +86,74 @@ class VerificationTests(unittest.TestCase):
             write_manifest(None)
             unstacked = diff_stats(root, branch)
             self.assertEqual(unstacked["paths"], ["apaleo/base.txt", "apaleo/feature.txt"])
+
+    def test_master_deletions_are_not_scanned_as_additions(self) -> None:
+        branch = "jdoe/sl-179-leftover"
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            repo = root / "worktrees" / branch / "development"
+            repo.mkdir(parents=True)
+
+            def git(*args: str) -> None:
+                subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+
+            git("init", "-q", "-b", "master")
+            git("config", "user.email", "test@example.com")
+            git("config", "user.name", "Test")
+            spec = repo / "src/tests/core/calendar/authz/calendar-events-authz-spec.ts"
+            untouched = repo / "src/tests/core/booking/old-spec.ts"
+            spec.parent.mkdir(parents=True)
+            untouched.parent.mkdir(parents=True)
+            spec.write_text("const ready = true;\n", encoding="utf-8")
+            untouched.write_text("password = \"untouched-e2e-password\"\n", encoding="utf-8")
+            git("add", "-A")
+            git("commit", "-qm", "fork")
+            git("update-ref", "refs/remotes/origin/master", "HEAD")
+            git("checkout", "-q", "-b", "feature")
+            spec.write_text("const ready = true;\npassword = \"branch-e2e-password\"\n", encoding="utf-8")
+            git("add", "-A")
+            git("commit", "-qm", "e2e")
+            git("checkout", "-q", "master")
+            git("rm", "-q", "src/tests/core/calendar/authz/calendar-events-authz-spec.ts", "src/tests/core/booking/old-spec.ts")
+            git("commit", "-qm", "master drops core e2e")
+            git("update-ref", "refs/remotes/origin/master", "HEAD")
+            git("checkout", "-q", "feature")
+
+            plan = root / "ai-plans" / branch
+            plan.mkdir(parents=True)
+            for name in ("prompt.md", "product.md", "implementation.md", "deferred-scope.md"):
+                (plan / name).write_text(name, encoding="utf-8")
+            manifest = make_manifest(
+                stages=["implement"],
+                tests_required=False,
+                e2e_required=False,
+                route_assignments=[],
+                fallback_assignments=[],
+                allowed_paths=["apaleo/**"],
+                test_paths=["apaleo/t"],
+                test_commands=[{"id": "t", "repo": "apaleo", "argv": ["true"], "parser": "generic", "success_pattern": "x"}],
+                acceptance_criteria=[{"id": "AC-1", "test": "t", "test_path": "apaleo/t", "command": "t", "evidence_pattern": "x", "red_required": False}],
+                stacked_on=None,
+            )
+            (plan / "pipeline.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+            stats = diff_stats(root, branch)
+            self.assertEqual(
+                stats["paths"],
+                ["development/src/tests/core/calendar/authz/calendar-events-authz-spec.ts"],
+            )
+            added = _added_diff(root, branch)
+            self.assertIn("branch-e2e-password", added)
+            self.assertNotIn("untouched-e2e-password", added)
+            message = leftover_core_e2e_message(root, branch)
+            self.assertIsNotNone(message)
+            self.assertIn("calendar-events-authz-spec.ts", message or "")
+            self.assertIn("worktree remove --force", message or "")
+
+            payment = repo / "src/tests/payment/pay-spec.ts"
+            payment.parent.mkdir(parents=True)
+            payment.write_text("const pay = true;\n", encoding="utf-8")
+            self.assertIsNone(leftover_core_e2e_message(root, branch))
 
     def test_dotnet_success_requires_observed_summary(self) -> None:
         command = {"parser": "dotnet"}

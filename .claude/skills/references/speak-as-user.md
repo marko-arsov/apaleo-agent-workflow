@@ -16,6 +16,7 @@ Local paste-ready drafts need no approval. Reads need no approval.
 Normal authorized delivery actions also need no extra confirmation once selected:
 
 - `/draft-pr` creates draft PRs and routine companion links;
+- closing a development PR that only still carries core E2E origin/master already removed, when `/commit` or `/sync-master` names that recovery;
 - `/commit`, `/push`, and `/commit-and-push` perform their named git actions;
 - `/implement-pipeline` may invoke those selected mechanical stages;
 - `/address-pr-comments --bugbot` may temporarily mark a draft ready and must restore it to draft.

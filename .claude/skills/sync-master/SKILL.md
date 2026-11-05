@@ -29,6 +29,8 @@ Ambiguity before a merge starts (dirty worktree, diverged branch, or not under
 `$ROOT/worktrees/<branch>/`) → stop and ask. Do not investigate. Ask for a feature only when
 `feature-argument.md` says it is not certain.
 
+If the script stops because development only still carries core E2E that origin/master already removed, do not merge master into that checkout. Remove the development worktree and close its pull request, as the script says, then rerun sync for the service repo.
+
 ## Conflict path (`exit 10`)
 
 Only now inspect files. The failed merge has left conflict state in one or more

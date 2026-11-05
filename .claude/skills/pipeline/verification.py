@@ -15,7 +15,6 @@ from pathlib import Path
 
 from common import FEATURE_REPOS, attached_repo_names, find_root, repos_from_manifest
 from pipeline_manifest import (
-    DEFAULT_BASE_BRANCH,
     find_plan_dir,
     load_manifest,
     path_allowed,
@@ -80,17 +79,66 @@ def worktrees(root: Path, branch: str) -> dict[str, Path]:
 
 
 def diff_base(root: Path, branch: str, repo: Path) -> str:
-    """Ref the working tree is compared with: origin/master, or the fork point of a stacked plan."""
-    stacked_on = task_base_branch(root, branch)
-    if stacked_on == DEFAULT_BASE_BRANCH:
-        return "origin/master"
-    result = _run(["git", "merge-base", f"origin/{stacked_on}", "HEAD"], repo)
+    """Merge-base of HEAD and origin/<base>.
+
+    The working tree is compared with that commit. Uncommitted edits are included.
+    Files the base deleted after this branch forked are not treated as additions.
+    """
+    base = task_base_branch(root, branch)
+    result = _run(["git", "merge-base", f"origin/{base}", "HEAD"], repo)
     if result.returncode:
         raise VerificationError(
-            f"cannot find the fork point with origin/{stacked_on} in {repo}: {result.stderr.strip()}; "
+            f"cannot find the fork point with origin/{base} in {repo}: {result.stderr.strip()}; "
             "fetch it, or drop base_branch from pipeline.json once it is merged"
         )
     return result.stdout.strip()
+
+
+# Core Jest suites master moved into the service repos. Payment and the two
+# leftover development folders are still real development work.
+_MIGRATED_E2E_PREFIXES = ("src/tests/", "src/proxy/")
+_DEVELOPMENT_E2E_KEEP = ("src/tests/payment/", "src/tests/ci/", "src/tests/rendering/")
+
+
+def _changed_paths(repo: Path, base: str) -> list[str]:
+    result = _run(["git", "diff", "--name-only", base], repo)
+    if result.returncode:
+        raise VerificationError(f"cannot list changes in {repo}: {result.stderr.strip()}")
+    paths = [line for line in result.stdout.splitlines() if line]
+    paths.extend(path.relative_to(repo).as_posix() for path in _untracked(repo))
+    return paths
+
+
+def _exists_on_ref(repo: Path, ref: str, path: str) -> bool:
+    return _run(["git", "cat-file", "-e", f"{ref}:{path}"], repo).returncode == 0
+
+
+def leftover_core_e2e_message(root: Path, branch: str) -> str | None:
+    """Development checkout whose own changes are only core E2E master already removed."""
+    repo = root / "worktrees" / branch / "development"
+    if not (repo / ".git").exists():
+        return None
+    base = diff_base(root, branch, repo)
+    paths = _changed_paths(repo, base)
+    if not paths:
+        return None
+    leftover: list[str] = []
+    for path in paths:
+        if path.startswith(_DEVELOPMENT_E2E_KEEP) or not path.startswith(_MIGRATED_E2E_PREFIXES):
+            return None
+        if _exists_on_ref(repo, "origin/master", path):
+            return None
+        leftover.append(path)
+    shown = ", ".join(leftover[:8])
+    extra = "" if len(leftover) <= 8 else f" (+{len(leftover) - 8} more)"
+    worktree = repo
+    main = root / "development"
+    return (
+        "development only still carries core E2E that origin/master already removed "
+        f"({shown}{extra}). Do not commit or sync it. "
+        f"Remove that checkout with `git -C {main} worktree remove --force {worktree}`, "
+        "close its pull request, then rerun for the service repo."
+    )
 
 
 def _untracked(repo: Path) -> list[Path]:
@@ -275,6 +323,9 @@ def scan_conventions(root: Path, branch: str, evidence_dir: Path) -> dict:
 
 def precommit_scan(root: Path, branch: str) -> dict:
     """Run only fast, diff-scoped safety checks; never execute project tests."""
+    leftover = leftover_core_e2e_message(root, branch)
+    if leftover:
+        raise VerificationError(leftover)
     fingerprint = diff_fingerprint(root, branch)
     evidence_dir = (
         root
@@ -652,9 +703,16 @@ def main() -> int:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--red-proof", action="store_true")
     parser.add_argument("--precommit", action="store_true")
+    parser.add_argument("--leftover-development", action="store_true")
     args = parser.parse_args()
     root = Path(args.root).resolve() if args.root else find_root()
     try:
+        if args.leftover_development:
+            message = leftover_core_e2e_message(root, args.task)
+            if message:
+                print(message)
+                return 2
+            return 0
         if args.precommit:
             result = precommit_scan(root, args.task)
         else:

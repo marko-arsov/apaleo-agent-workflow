@@ -47,7 +47,7 @@ complete plan-scoped verification/fix loop.
 - When the plan changes an API action, load `$ROOT/.claude/skills/references/api-endpoint-patterns.md` and execute its action matrix. Re-check the resource's sibling actions before changing controller naming, request contracts, authorization, or service layering.
 - Load `clean-code` at start (invoke or file-read). Apply while writing C# **as the local neighbor already does**.
 - **New C# files:** file-scoped namespaces only (`namespace X.Y;`) — see `$ROOT/AGENTS.md` Conventions. Do not introduce classic `namespace { }` blocks in new files.
-- **Hard precondition:** load `e2e-test-engineering-development` **before** touching any file under `development/`.
+- **Hard precondition:** load `e2e-test-engineering-development` **before** touching `e2e/` in a service repo or any file under `development/`. Migrated-service specs go in that repo's `e2e/tests`. Payment specs stay in `development/src/tests/payment`.
 - Worktree rules: `$ROOT/.claude/skills/references/worktrees.md`.
 - If the plan includes schema: follow `$ROOT/.claude/skills/references/db-migrations.md`. If the plan includes a ConfigCat / Features API flag: follow `$ROOT/.claude/skills/references/feature-flags.md` — add constant + `IFeatureSettingsProvider` gate + E2E helper; **remind the user** with filled Setup for humans (ConfigCat + local config) before claiming the feature is testable. Prefer finishing/committing the **`[DB-MIGRATION]`** slice (migration + snapshot; entities only if the plan says so) **before** API/domain that depends on it — often a separate branch/PR. Never Drop*/Rename* in the same PR as removing entity properties.
 - If the plan adds or changes API routes: register **each** action in OPA `endpoint_permissions` (`references/identity.md` — list, by-id, and write routes). Mirror the sibling entries in the same resource `data.json`.
@@ -73,12 +73,13 @@ After plan resolution:
 
 1. Confirm mains on `master`. Never `git switch` feature branches in `$ROOT/apaleo`, `$ROOT/development`, `$ROOT/identity`, `$ROOT/agent-skills`, or `$ROOT/angular-api-proxy`.
 2. Ensure `$WT=$ROOT/worktrees/<target>` via **`worktree-start`** if no in-scope feature repo is present or on the wrong branch (existing-branch mode only — never create from master here). Team-plugin-only plans use `$WT/agent-skills` and Angular-client-only plans use `$WT/angular-api-proxy`; neither requires `$WT/apaleo`.
-3. **development:** if `pipeline.json` paths or `implementation.md` require development/E2E work → ensure `$WT/development`. Otherwise do not force a worktree; if a new need appears, report a plan defect.
+3. **development:** ensure `$WT/development` only when the plan changes payment E2E or another file that still lives in `development`. Core and other migrated-service E2E live in that service's `e2e/` and do not need a development worktree. If a new development need appears that the plan did not name, report a plan defect.
 4. **identity:** if `pipeline.json` paths or `implementation.md` require Identity work → ensure `$WT/identity`. Otherwise do not force a worktree; if a new need appears, report a plan defect (`references/identity.md`).
 5. **agent-skills:** if `pipeline.json` paths or `implementation.md` require team-plugin work → ensure `$WT/agent-skills`. Otherwise do not force a worktree; never edit the parked `$ROOT/agent-skills` clone.
 6. **angular-api-proxy:** if `pipeline.json` paths or `implementation.md` require Angular API client or generator work → ensure `$WT/angular-api-proxy`. Otherwise do not force a worktree; never edit the parked `$ROOT/angular-api-proxy` clone. Regenerate `modules/**` with the canonical flow; never hand-edit generated clients.
-6. In `/implement-pipeline`, dirty files matching `pipeline.json.test_paths` are the expected TDD
-   handoff from `/implement-tests`; preserve them and continue. Any other pre-existing dirt → stop.
+6. In `/implement-pipeline`, the implement-tests stage has already committed the tests. Those files
+   are the contract; preserve them. Uncommitted dirt is only acceptable when it matches
+   `pipeline.json.test_paths` from an interrupted handoff. Any other pre-existing dirt → stop.
 7. **Double-check:** the in-scope worktree(s) are on `<target>`. For product work, `git -C $APALEO branch --show-current` equals `<target>` (and `$DEV` / `$IDENTITY` / `$AGENT_SKILLS` when required). Re-check immediately before the first write in each repo.
 8. Cursor: `move_agent_to_root` → `$WT`. Edit only under `$WT/**`. Plans append to `$ROOT/ai-plans/<branch>/progress.md`.
 9. Report paths in the output. If a required worktree fails → blocked (questions only); no partial implementation.

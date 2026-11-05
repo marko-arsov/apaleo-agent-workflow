@@ -80,14 +80,20 @@ dotnet test Apaleo.Essential.Api.sln -c Debug --no-build
 dotnet restore Apaleo.Identity.sln && dotnet build Apaleo.Identity.sln -c Debug
 dotnet test Apaleo.Identity.sln -c Debug --no-build
 
-# development
+# development (compose stack, and payment E2E only)
 yarn && npm run build && npm run lint
 npm run format && npm run lint-fix
 ```
 
-For local E2E, prefer `npm run test:file -- <spec>`; never run full `npm test`. CI uses
-`npm run test:core`. Never target staging/production destructively without confirmation. Load the
-path-scoped rules and `.claude/skills/references/e2e-stack.md` for `development/` work.
+Jest E2E for core lives in `apaleo/e2e/tests`. Identity and the other migrated services use `e2e/tests` in that service repo. Generated clients live in `e2e/proxy/<module>` and publish on merge to master. Shared setup is the `@apaleo/e2e-sdk-lib` package. Payment specs stay in `development/src/tests/payment`.
+
+Local one-file run, from that repo's `e2e/` directory, needs GitHub Packages auth (`NPM_CONFIG_USERCONFIG=$HOME/.npmrc` or a `.npmrc` in the `e2e/` folder):
+
+```bash
+yarn test -- tests/<area>/<file>-spec.ts
+```
+
+Never run the full `yarn test` locally. Payment: `npm run test:file -- ./src/tests/payment/<file>-spec.ts` from `development`. Never target staging/production destructively without confirmation. Load `.claude/skills/references/e2e-stack.md` before localhost E2E. The compose stack still lives in `development`.
 
 ## High-risk conventions
 
@@ -98,7 +104,7 @@ path-scoped rules and `.claude/skills/references/e2e-stack.md` for `development/
   and Rego—not a new API wrapper service. Prefer default `core/decision` when that axis is already
   correct; named decisions only when default would be wrong. Every new action needs matching
   `endpoint_permissions`.
-- Public v1 Swagger contracts are stable and committed. Regenerate affected development proxies.
+- Public v1 Swagger contracts are stable and committed. Regenerate the service's `e2e/proxy/<module>` with the Jenkins shared-library generators. Do not hand-edit generated proxies.
 - Migrations use Taskfile and deploy-ahead sequencing; never invent schema or combine a destructive
   drop/rename with entity removal.
 - Never weaken, skip, delete, quarantine, or filter out a test to obtain green.
@@ -110,7 +116,7 @@ loads `.claude/skills/references/api-endpoint-patterns.md`; authorization loads 
 
 - Never put secrets in tracked files, plans, stage reports, PR text, or public replies.
 - Never make opportunistic refactors outside the confirmed plan.
-- Never commit the local Identity-scope workaround in `development/src/config.ts`.
+- Never commit an Identity-scope strip, a `.npmrc` token, or a patch of `@apaleo/e2e-sdk-lib`. `development/src/config.ts` is not on development master; do not recreate it.
 - Never invoke `setup-new-service` automatically.
 - Never post tracker/GitHub comments, resolve threads, or message people as the user without the
   explicit action-specific confirmation in `references/speak-as-user.md`.

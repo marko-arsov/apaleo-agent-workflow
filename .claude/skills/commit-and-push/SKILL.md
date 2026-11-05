@@ -6,7 +6,9 @@ disable-model-invocation: true
 
 # Commit and push
 
-Run the composite script. It commits first and invokes push only if commit succeeds. Push merges a
+Run the composite script. It commits first and invokes push only if commit succeeds. A full
+pipeline run has already committed each successful stage locally, so an empty commit here is
+expected and the script still pushes. Push merges a
 clean `origin/<branch>` update automatically. It resolves `sl100`, `sl-100`, `c3331`, `hc3331`, or `HC-3331` to the current matching worktree
 first, then a unique existing branch. Read
 `$ROOT/.claude/skills/references/chat-output.md` and present the script's outcome according to that
@@ -28,6 +30,9 @@ Argument handling:
   worktree paths or resolve it yourself.
 - The script commits and pushes every attached repository for the resolved branch. Never ask the user
   to choose between `apaleo`, `development`, or "both".
+- If it stops because development only still carries core E2E that origin/master already removed,
+  do not stash or sync that checkout to clear the secret scan. Remove the development worktree,
+  close its pull request, then rerun. The service repo is the commit.
 
 Real ambiguity (several branches for the same id, dirty state outside the resolved worktree, or a lock
 held by another branch) → stop and ask. Do not investigate.

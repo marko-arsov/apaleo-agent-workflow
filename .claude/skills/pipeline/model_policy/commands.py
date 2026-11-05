@@ -5,7 +5,7 @@ from .storage import read, write, summary
 
 
 def arguments(parser):
-    parser.add_argument("action", choices=["inspect", "refresh", "evaluate", "propose", "apply", "recover"])
+    parser.add_argument("action", choices=["inspect", "refresh", "watch", "evaluate", "propose", "apply", "recover"])
     parser.add_argument("--scope", choices=["global", "project", "both"])
     parser.add_argument("--providers", help="Confirmed provider set, comma-separated")
     parser.add_argument("--confirm-model", action="append", default=[], help="Explicitly confirmed provider:model access; refresh only")
@@ -37,6 +37,13 @@ def execute(args, store, cwd):
         known = {route_key(r) for r in registry}
         unknown = [p + ":" + m["model"] for p, row in result["providers"].items() for m in row["models"] if p + ":" + m["model"] not in known]
         return {"workflow": store.workflow, "providers": {p: {"installed": r["installed"], "models": len(r["models"]), "requires_confirmation": [m["model"] for m in r["models"] if m["status"] == "needs-confirmation"], "notice": r.get("notice")} for p, r in result["providers"].items()}, "unreviewed_models": unknown, "errors": result["errors"], "defaults_changed": False}
+    if args.action == "watch":
+        from .watch import refresh
+        aliases = read(Path(__file__).parent / "aliases.json")
+        catalogue = read(store.data / "catalogue.json", {})
+        with store.lock():
+            report = refresh(store.data, aliases, catalogue, store.effective().get("defaults", {}))
+        return {"workflow": store.workflow, **report, "routes_changed": False}
     if args.action == "evaluate":
         facts = read(args.input) if args.input else {"stages": ["specify", "implement-tests", "implement", "review"]}
         result = store.evaluate(facts, read(args.settings) if args.settings else None)

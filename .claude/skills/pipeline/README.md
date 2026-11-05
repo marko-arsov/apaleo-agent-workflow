@@ -37,7 +37,7 @@ implement-pipeline.sh HC-3333 \
 - `implement` is always inserted; `implement-tests` is inserted when tests change.
 - `draft-pr` requires `commit-and-push`.
 - `test-and-fix` is not a stage; `implement` executes that procedure internally.
-- Any valid provider/model may be used for every AI stage. Route diversity is an advisory during specification.
+- Any valid provider/model may be used for every AI stage. The evaluator suggests a different lab for test authoring and review; that suggestion stays advisory and an explicit route wins.
 - `/specify` offers review rather than forcing it. It evaluates model and effort offline, then
   saves an immutable selection snapshot. `/update-models` reviews machine/project defaults;
   read `references/model-policy.md` for its commands and independent settings.

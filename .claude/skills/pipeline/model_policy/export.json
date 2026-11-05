@@ -1,14 +1,16 @@
 {
   "component": "model-policy",
   "files": {
-    "__init__.py": "9742d8c2602454e7618ccc9cf0003162926561b109448e7dbe662465487c4c6a",
-    "commands.py": "51307db239cd9972302bf63e76491f4ae2773be960d4b983981190d95f7174c9",
-    "core.py": "196e7c8536bad9ab99986af44f1b0d85cc9c1174e4f4f62620b326a6f62a5722",
+    "__init__.py": "3e4045b4c627cb6d6051078c3c770209972fba07299792f31352282b9fc95dc2",
+    "aliases.json": "dad9c4084d9a577ebb9766311fe86a3a8b9557b5bccf4b038d52df313dd7c8a0",
+    "commands.py": "c8b1f00088d4da4463ab27f4bb77f861d579907e22287d98e2cdd8cd7ec6d6cb",
+    "core.py": "4f6853364a2d754f26438946af151902384088278fd800e8b4aca3c2f5b626e9",
     "discovery.py": "7b489c68c5dc8f94a0fdab2ab21828048fd130edb1218952c6329e70b39ad128",
-    "policy.json": "7bd74003be7929b7bd3f7b0004890a3534d9449b97f8c3655cbf93848f3fabdc",
-    "registry.json": "dab3aa2e8ab6e6d63abc7fc75dad5b137508ccaebf12754a54f9c8ec2be23036",
-    "selftest.py": "b37e0f079e5747e2c21f98667ee008f5f24ac27a55fe0ce82c1f906d70f56861",
-    "storage.py": "f9893729c8180dc3891d2502c2e75aae553df056fbc03078372158621ec75761"
+    "policy.json": "e6bcc1f1a54bf9e38b17affb146375130f487fb0783b51af87b6f0d94ba6b69e",
+    "registry.json": "1faf96f237daef424815d5a5fa675c281b4888112b42e438eee8206fdfb5edc1",
+    "selftest.py": "cc44d65f4eb667d33c2eeba67449258ba01a51b9dae1f6d8bdddbf2c001df330",
+    "storage.py": "f9893729c8180dc3891d2502c2e75aae553df056fbc03078372158621ec75761",
+    "watch.py": "771ac02ef00f166bd5e8cf3014fdac64b4303701b805e46adeebbf593e7aad51"
   },
   "schema_version": 1
 }

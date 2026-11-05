@@ -30,7 +30,7 @@ Production deploys are rolling. Schema that the **new** code needs must exist **
 |---|---|
 | **Title** | `[DB-MIGRATION] HC-<id> <imperative summary>` |
 | **Goal** | Land schema on master and get it applied in environments **before** app code that depends on it |
-| **E2E** | `N/A — schema-only` (no development companion required) |
+| **E2E** | `N/A — schema-only` (no E2E companion required) |
 | **What to commit** | The EF artifacts under `src/Apaleo.Data/Migrations/` (`*Migration*.cs`, `*.Designer.cs`, `ApaleoContextModelSnapshot.cs`) **plus** the matching `Data/Entities` properties and entity type builder changes, and only the minimal compile fixes those force. No API/domain feature code. |
 | **Local workflow** | Add/adjust entities + builders → `task ef:add-migration -- <Name>` → commit migration, snapshot, entities and builders together. `dotnet ef migrations has-pending-model-changes` must report no changes. |
 | **Why not migration-only** | A snapshot ahead of the model breaks design-time `dotnet ef` on master (`PendingModelChangesWarning`), and a teammate's next `migrations add` would drop the new columns. Precedent: `#12858`. Seen in SL-145. |
@@ -99,7 +99,7 @@ The migration stays in the repository so dev, CI, and staging still apply it at 
 |---|---|
 | **Title** | `HC-<id> …` (no `[DB-MIGRATION]` unless this PR also ships further schema) |
 | **Depends on** | PR1 merged (and migration applied in target envs as required). Rebase onto master after PR1. |
-| **Contains** | Domain, API, swagger, unit tests, e2e in `development` when needed (entities already shipped in PR1) |
+| **Contains** | Domain, API, swagger, unit tests, and E2E under the service repo's `e2e/tests` when needed (entities already shipped in PR1). Payment E2E stays in `development` |
 | **Must not** | Re-add the same migration files; snapshot fights if both PRs touch migrations carelessly |
 
 **Specify / plan:** when a feature needs new tables/columns, **split the implementation plan into Migration PR then Feature PR** with explicit merge/apply ordering.

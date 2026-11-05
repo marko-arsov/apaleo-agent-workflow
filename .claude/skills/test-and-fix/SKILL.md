@@ -28,7 +28,7 @@ plan, red proof, current filesystem, and failing output. Do not read `prompt.md`
 rationale, or launch another agent. For a manual post-PR invocation, resolve the current complete plan and
 read only the specific handoff/report needed to understand the new edits. The `## Validation and
 Test Strategy` table is the tiebreaker. Load `e2e-test-engineering-development` before modifying
-anything under `development/`. Read `$ROOT/.claude/skills/references/worktrees.md`.
+`e2e/` in a service repo or anything under `development/`. Read `$ROOT/.claude/skills/references/worktrees.md`.
 
 **Worktree:** ensure `$WT` for the plan branch via `worktree-start` if needed; run all builds/tests under `$APALEO` / `$DEV` / `$IDENTITY`; mains stay on `master`; `move_agent_to_root` → `$WT`.
 
@@ -45,7 +45,7 @@ session and therefore adds no model call. A direct manual invocation uses the cu
 1. **Build** every worktree repo that exists (AGENTS.md commands from `$APALEO` / `$DEV` / `$IDENTITY`). Fix build before trusting tests.
 2. **Unit tests** in `apaleo` — full: `dotnet test Apaleo.sln -c Debug --no-build` (build first if needed).
 3. **Integration** in `apaleo` — **filtered** to touched projects / name filters from the plan (decision 5B). Start required infra per AGENTS if those tests need it. Escalate to broader runs only if the user asks or failures demand it.
-4. **E2E** in `development` — specs from the E2E Test Plan plus specs touching affected flows. Prefer `npm run test:file -- <path>`. Use `npm run test:core` when the change is broad or the user asks. **Never** full `npm test` locally. State which command ran.
+4. **E2E** in the service repo's `e2e/` directory — specs from the E2E Test Plan plus specs touching affected flows. From `e2e/`, run `yarn test -- tests/<area>/<file>-spec.ts`. Payment stays in `development`: `npm run test:file -- ./src/tests/payment/<file>-spec.ts`. **Never** run the full Jest suite locally. State which command ran.
 
    **Stack lock + wait queue (mandatory before localhost E2E):**
 
@@ -70,7 +70,7 @@ session and therefore adds no model call. A direct manual invocation uses the cu
 
    `/e2e-stack-status` shows owner + queue anytime.
 
-   **Missing Identity scopes (local-only workaround):** if `ensureNewAccountCreated` fails with `You requested scopes that do not exist: …`, read `$ROOT/.claude/skills/references/e2e-missing-identity-scopes.md`. When the ticket does **not** need those scopes, strip them from `$DEV/src/config.ts` via `e2e-local-scope-workaround.sh apply` and re-run the same E2E command. **Never commit or push that patch.** Restore before leaving this stage if you will not run commit next; `implement-pipeline.sh` also restores on EXIT and before `commit-and-push`. If the feature **does** need the missing scopes → `PIPELINE_INPUT_REQUIRED` (Identity seed, not this file). Do not recreate the whole `db` container to fix apaleo schema drift (drops Identity).
+   **Missing Identity scopes:** if account setup fails with `You requested scopes that do not exist: …`, read `$ROOT/.claude/skills/references/e2e-missing-identity-scopes.md`. Do not recreate `development/src/config.ts`, do not patch `@apaleo/e2e-sdk-lib` into a commit, and do not recreate the whole `db` container (that drops Identity). If the feature needs the missing scopes → `PIPELINE_INPUT_REQUIRED` (Identity seed or e2e-sdk, not a local strip).
 
 If the suite would hit a shared environment → confirm before the first run in the session. Never run plan-flagged destructive cases without approval.
 
@@ -83,7 +83,7 @@ Report actual command and result every step. A run you did not execute is not a 
 | Code wrong — test asserts what the plan requires | Fix code |
 | Test wrong — asserts old behaviour the plan deliberately changed | Update test; cite AC or `D#` |
 | Test badly written (fixture/setup/timing) | Fix per `e2e-test-engineering-development` / `clean-code`; explain |
-| Environmental (infra, shared data, known flaky) | Do not "fix" product code or tests. Report evidence. **Exception:** missing Identity `ApiScopes` after a local DB reset — local `config.ts` strip only if the ticket does not need those scopes (`e2e-missing-identity-scopes.md`). Never commit that strip. |
+| Environmental (infra, shared data, known flaky) | Do not "fix" product code or tests. Report evidence. A missing Identity `ApiScopes` failure after a local DB reset follows `e2e-missing-identity-scopes.md`: record the scope names, and do not commit a scope strip. |
 | Ambiguous — plan does not settle it | Stop and ask |
 
 ## Absolute prohibitions
@@ -93,7 +93,7 @@ Report actual command and result every step. A run you did not execute is not a 
 - Never change a test to match behaviour the plan does not authorize.
 - Never mark flaky to avoid diagnosis — leave failing and report evidence.
 - Never reduce coverage silently.
-- Never commit the local Identity-scope `config.ts` strip (`e2e-missing-identity-scopes.md`).
+- Never commit an Identity-scope strip or a patch of `@apaleo/e2e-sdk-lib` (`e2e-missing-identity-scopes.md`).
 
 ## Loop
 
