@@ -41,6 +41,12 @@ manual lane. In the full pipeline, it follows `/implement-tests` when that stage
 Not for planning, the independent review, commit, or push. This stage owns implementation plus the
 complete plan-scoped verification/fix loop.
 
+## Cursor chat title
+
+On Cursor, rename this chat once the plan resolves. This is a stage session: status `implement`
+while working, `waiting` when you stop for the user, and `done` when plan verification finishes.
+Follow `references/cursor-chat-title.md`.
+
 ## Adopted skills
 
 - **Existing patterns first:** `$ROOT/.claude/skills/references/existing-patterns.md` — the primary implementation constraint. Cite the neighbor before adding a file or type.

@@ -56,7 +56,9 @@ checks remain available when explicitly choosing that host. Read `references/mod
 
 ## Required path
 
-1. Resolve `$ROOT` and read Linear when an issue id exists. Defer every Linear mutation until plan
+1. Resolve `$ROOT` and read Linear when an issue id exists. On Cursor, as soon as the issue id and
+   a short subject are known, rename this chat with status `specify`
+   (`references/cursor-chat-title.md`). Defer every Linear mutation until plan
    artifacts exist and the user has confirmed the exact action per `specify-process.md`. Capture
    ticket text to a local file and run
    `pipeline/untrusted_input.py --file <ticket> --label "ticket text" --check`; research from the

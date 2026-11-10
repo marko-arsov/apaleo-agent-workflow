@@ -244,6 +244,15 @@ a concise, decision-oriented Markdown result. Raw stdout is available on request
 excerpts remain appropriate when they explain a failure. Review skills render their prescribed
 orientation and findings as normal Markdown, not terminal transcripts.
 
+### Cursor chat titles
+
+On Cursor, `/specify`, `/implement`, and `/implement-pipeline` rename the current chat. The title
+is the issue id, two or three words from the issue title, and the live status (`specify`,
+`preflight`, `implement-tests`, `implement`, `review`, `commit-and-push`, `draft-pr`, `waiting`,
+`failed`, or `done`). The pipeline chat updates when the watcher reports a new stage. A stage
+session names only its own stage. Hosts without `rename_chat` skip this. Law:
+`references/cursor-chat-title.md`.
+
 ## Support rotation
 
 `/support-rotation <Slack thread | Linear issue>` is the local second pass on one
@@ -311,6 +320,11 @@ Local one-file run, from that repo's `e2e/` directory, needs GitHub Packages aut
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-11-10: Cursor chats for `/specify`, `/implement`, and `/implement-pipeline` are renamed to
+  the issue id, a few words from the issue title, and the live status. The pipeline chat updates
+  as the watcher changes stage. Stage sessions (`implement-tests`, `implement`, `review`) name
+  only their own stage. `references/cursor-chat-title.md`.
 
 - 2026-11-04: The full pipeline commits `implement-tests`, `implement`, and `review` locally
   after each one succeeds. A later skip, deleted test, or changed assertion is restored

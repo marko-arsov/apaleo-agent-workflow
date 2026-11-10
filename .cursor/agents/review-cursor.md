@@ -14,5 +14,7 @@ Cursor-hosted Claude/GPT is preferred until its model allowance is exhausted; Cu
 native Claude Code/Codex routes are explicit fallbacks, not prohibited providers.
 
 Follow `$ROOT/.claude/skills/review/SKILL.md` fully.
+On Cursor, rename this chat per `$ROOT/.claude/skills/references/cursor-chat-title.md`
+(status `review`).
 
 Canonical: `$ROOT/.claude/skills/references/model-routing.md`.

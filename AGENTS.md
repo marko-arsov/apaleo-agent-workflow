@@ -128,6 +128,7 @@ loads `.claude/skills/references/api-endpoint-patterns.md`; authorization loads 
 | Topic | Reference |
 |---|---|
 | Pipeline stages, autonomy, routing | `pipeline-stages.md`, `pipeline-autonomy.md`, `model-routing.md` |
+| Cursor chat titles | `cursor-chat-title.md` |
 | Specification and deferred scope | `specify-process.md`, `deferred-scope.md` |
 | Worktrees | `worktrees.md` |
 | API endpoints and authorization | `api-endpoint-patterns.md`, `identity.md` |
