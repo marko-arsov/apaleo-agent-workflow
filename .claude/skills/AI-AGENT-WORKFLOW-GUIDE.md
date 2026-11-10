@@ -58,6 +58,11 @@ The runner may detach while a model-free watcher reports events:
 /implement-pipeline HC-3333 --answer 'answer to the genuine paused-stage question'
 ```
 
+On Cursor, the chat running `/specify`, `/implement`, or `/implement-pipeline` is renamed to the
+issue id, two or three words from the issue title, and the live status. The pipeline chat updates
+as the stage changes (`specify`, `implement-tests`, `implement`, `review`, `waiting`, `done`).
+Details: `references/cursor-chat-title.md`.
+
 ## 3. What is mechanically gated
 
 - Test authoring can write only manifest `test_paths` and must prove assertion-level red; compile,

@@ -33,6 +33,8 @@ or supplied as an explicit `/implement-pipeline --route` override; diversity is 
 3. `$ROOT/.claude/skills/references/worktrees.md`
 4. `e2e-test-engineering-development` before any `e2e/` edit, and before any `development/` edit (payment)
 5. The existing test neighbors cited by the plan
+6. On Cursor, `references/cursor-chat-title.md`. Rename this chat as a stage session with status
+   `implement-tests`.
 
 Do not read `prompt.md`, product source paths named by `allowed_paths`, recovery packets, or prior
 implementation attempts. The harness supplies the current complete plan and test conventions.

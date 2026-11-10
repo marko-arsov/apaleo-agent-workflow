@@ -85,3 +85,7 @@ When `PIPELINE_DETACHED` is printed, report its pid/log/status/watch lines. With
 mode, keep streaming until success, a verified hard failure, or `WAITING_FOR_INPUT`. If input is
 required, ask the exact saved question; when the user answers, invoke `--answer` with their response
 instead of starting a fresh stage session. With `--no-wait`, return after the tracking lines.
+
+On Cursor, this chat is the pipeline orchestrator. Rename it to the issue and the live stage, and
+update that title when the watcher reports a new stage. Follow `references/cursor-chat-title.md`.
+The watcher itself stays model-free; one rename per stage change is the only extra step.

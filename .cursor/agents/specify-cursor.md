@@ -7,6 +7,9 @@ description: Apaleo /specify researches and presents a complete plan for approva
 
 Follow `$ROOT/.claude/skills/specify/SKILL.md` exactly.
 
+On Cursor, rename this chat per `$ROOT/.claude/skills/references/cursor-chat-title.md`
+(status `specify`).
+
 ## Planning and approval boundary
 
 Every `/specify` invocation is planning-only, including tiny fixes, extensions to an existing issue,

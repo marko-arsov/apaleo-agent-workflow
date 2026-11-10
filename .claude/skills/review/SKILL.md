@@ -40,6 +40,11 @@ point-based recommendation in `references/model-routing.md`; it is not a gate. A
 review starts a new session and may use any explicitly selected valid route. Never transfer or
 resume the implementation session. Read `$ROOT/.claude/skills/references/model-routing.md`.
 
+## Cursor chat title
+
+On Cursor, rename this chat once the branch is known. This is a stage session with status
+`review`, then `waiting` or `done`. Follow `references/cursor-chat-title.md`.
+
 ## Direct review: ambiguity and confirmation gate
 
 Direct invocation is analysis-only, modelled on `/address-pr-comments`:
