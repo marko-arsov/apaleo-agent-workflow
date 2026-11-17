@@ -2,13 +2,15 @@
 
 ## 1. Specify the contract
 
-Run `/specify HC-3333`. It researches before writing, asks until important choices are settled,
-and produces the immutable five-file plan set. The final confirmation includes:
+Run `/specify HC-3333` on the planning model (Cursor `specify-cursor`, Opus 5.5 high). It
+researches first, then asks one batch of material questions, each with a recommended answer
+(`ok` accepts them all), and lists the assumptions you can veto. It writes the five-file plan set
+and finishes with a one-screen approval summary:
 
-- the outcome, scope, risk, and diff budget;
-- every acceptance criterion mapped to a named test and exact parseable command;
-- selected stages and exact provider/model routes;
-- explicit fallback routes, if any.
+- the outcome, the examples (acceptance criteria with concrete values), and what is out of scope;
+- your decisions, the assumptions, and the number of traps recorded for the implementer;
+- the lane, with stages and routes for the pipeline;
+- risk, size, the worktrees to create, any Linear update, and the plan-lint result.
 
 Inspect `ai-plans/<branch>/implementation.md`; `pipeline.json` is the runner-enforced form. A plan
 revision may update the complete set in place or create a complete `vN/`; the runner archives and

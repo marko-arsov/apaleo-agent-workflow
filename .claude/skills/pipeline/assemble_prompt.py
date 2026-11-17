@@ -23,7 +23,7 @@ DEFAULT_REFS_BY_STAGE = {
         "e2e-missing-identity-scopes.md",
         "clean-code",
     ],
-    "review": ["existing-patterns.md", "deferred-scope.md"],
+    "review": ["existing-patterns.md", "deferred-scope.md", "test-strength.md"],
     "specify": ["existing-patterns.md", "worktrees.md", "identity.md"],
     "address-pr-comments": ["deferred-scope.md"],
 }
@@ -59,8 +59,8 @@ def review_convention_context(root: Path) -> str:
     return (
         "# Mandatory review convention inventory\n\n"
         "This is the authoritative `/add-rule` inventory. Apply each scoped rule only to "
-        "its matching changed paths. Tier 1 violations must be repaired; Tier 2 matches must "
-        "be investigated and evidenced; Tier 3 statements require a semantic review.\n\n"
+        "its matching changed paths during the polish pass. Tier 1 violations must be repaired; "
+        "Tier 2 matches and Tier 3 statements are judged case by case on changed lines.\n\n"
         + "\n\n---\n\n".join(parts)
     )
 

@@ -59,13 +59,11 @@ blast radius when its merged graph is available (`references/graphify.md`).
 
 ## Review standard
 
-Use the `/review` method in this order, adapted to the provisional PR
-specification: **(1) intent/specification, (2) behavioral test gaps,
-(3) correctness, (4) rules, conventions, and semantic reuse/DRY**. Inspect the
-same risk areas: boundaries; async/cancellation; partial failures;
-idempotency/concurrency; tenancy, property scoping, and authorization; money,
-time, and locale; migration safety; public-contract compatibility; and endpoint
-permissions. Search for an established owner before alleging duplicated or
+Use the `/review` method, adapted to the provisional PR specification: its
+**Tier 1 lenses** (security and authorization, logic and data, performance and
+reliability, contract/migrations/intent) first, then its **Tier 2 polish list**
+(reuse, simplification, neighbour consistency, placement, comments, tests) as
+comment candidates. Search for an established owner before alleging duplicated or
 misplaced responsibility. Treat passed tests as evidence, not proof.
 
 Every comment must be grounded in the diff (or a demonstrated PR-intent mismatch),

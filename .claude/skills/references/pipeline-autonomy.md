@@ -2,7 +2,8 @@
 
 This contract applies only to stages selected in `pipeline.json` or by an explicit one-run stage
 override. Product implementation and publishing safety gates fail closed. Review is advisory and
-records its outcome without pausing delivery.
+records its outcome without pausing delivery, unless it asks the user about a High finding it
+truly cannot fix.
 
 ## Decision authority
 
@@ -42,7 +43,7 @@ or provider output; it receives only the confirmed plan, current tests/filesyste
 | Provider stall | no output for inactivity timeout | terminate process; one fresh retry by default |
 | Premature stage block | reversible local operation, transient infrastructure, mechanical test defect | resume the same session with an autonomy challenge, up to three times |
 | User input required | `PIPELINE_INPUT_REQUIRED` with concrete numbered questions | persist session and wait; resume that exact session with `--answer` |
-| Stage contract | skipped marker or missing success evidence | stop with evidence, except review which records an advisory |
+| Stage contract | skipped marker, missing success evidence, or a stage result the runner rejects | repair in the same session up to two times with the exact rejection; then stop with evidence (review records an advisory) and the supervisor follows `pipeline-supervisor.md` |
 | Semantic failure | implementation/test cannot satisfy plan | stop with evidence; a review finding is advisory evidence |
 
 Only a confirmed fallback route may follow a failed route. Never silently substitute providers or
@@ -57,7 +58,7 @@ The runner snapshots dirty-file content before the stage. After a provider failu
 - `implement-tests` may touch only `test_paths`;
 - `implement` may touch allowed product paths but never `test_paths`;
 - pipeline review may touch either allowed set only for unambiguous plan-authorized fixes and
-  same-behavior improvements; manual `/review` is check-only. No retry commits, resets, or discards
+  same-behavior improvements; manual `/review` edits only the findings the user picks. No retry commits, resets, or discards
   partial work automatically.
 
 No retry commits, resets, or discards partial work automatically.
@@ -89,7 +90,8 @@ An agent's success marker is necessary but insufficient:
 - `implement`: at least one product path changed, every changed path remains in product/test globs,
   and current-fingerprint commands, AC traceability, budget, secret, and convention evidence passes;
 - `review`: applies only in-scope, plan-authorized corrections; missing reports, incomplete audit
-  evidence, provider failures, environment failures, and unresolved findings are advisory evidence;
+  evidence, provider failures, environment failures, and unresolved findings are advisory evidence,
+  except a `PIPELINE_INPUT_REQUIRED` for an unfixable High finding, which pauses like any stage;
 - `commit-and-push`: worktrees are clean and each local head equals `origin/<branch>`;
 - `draft-pr`: `pr.md` exists and at least one open PR is verified as draft.
 

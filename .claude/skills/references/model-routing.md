@@ -10,7 +10,9 @@ no stage routes or provider preflight.
 Use `/update-models` to refresh native catalogues, confirm providers and global/project scope,
 and approve an exact settings diff. See `model-policy.md` for the shared evaluator contract.
 Apaleo owns separate machine settings and workspace overrides; it never reads another workflow's
-mutable settings. Every specify evaluates offline using existing task facts. The evaluator gives
+mutable settings. `/specify` itself plans on the deep band (Cursor `claude-opus-5-5-high`,
+Claude Code `opus`). A pipeline-lane specify evaluates the later stages offline using existing
+task facts; the manual lane skips the evaluator. The evaluator gives
 `implement`, `implement-tests`, and `review` different labs when a reviewed model
 in band exists; a one-band step is recorded as an advisory. `models watch` records
 Artificial Analysis evidence and does not change those routes. Routine work uses

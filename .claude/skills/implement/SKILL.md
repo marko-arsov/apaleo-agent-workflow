@@ -1,11 +1,11 @@
 ---
 name: implement
 description: >-
-  Executes an ai-plans/<branch> implementation plan inside the feature worktree
-  (apaleo ± development) with minimal drift, the complete verify/fix loop, and
-  evidence parsed from named commands. Ensures the worktree exists; mains stay on master. Use when the user
-  invokes /implement or asks to implement from the current plan. Does not commit
-  or push.
+  Executes an ai-plans/<branch> plan inside the feature worktree. Manual lane: writes the tests
+  first, builds the plan's steps, verifies with the full test-and-fix loop plus API samples, and
+  reviews its own diff (bugs, test strength, polish). Pipeline: builds against the committed tests
+  and verifies; the review stage does the independent review. Mains stay on master. Does not
+  commit or push.
 disable-model-invocation: true
 argument-hint: "[branch-name | PlanFile path]"
 model: sonnet
@@ -14,157 +14,185 @@ effort: medium
 
 # Implement
 
-Execute the plan. Minimal drift. No commits, no pushes, never edit plan files (`product.md` / `implementation.md` / `prompt.md`).
+Execute the plan with minimal drift. Never commit, push, or edit the plan files (`product.md`,
+`implementation.md`, `prompt.md`).
 
-**Cursor note:** `model` / `effort` are Claude Code-only; under Cursor this runs on the session model.
+| Lane | Phases this skill runs |
+|---|---|
+| Manual (`/specify` → `/implement`) | 1 Tests first → 2 Build → 3 Verify → 4 Self-review |
+| Pipeline (`/implement-pipeline`) | Red after skeleton → 2 Build → 3 Verify; the review stage replaces 4 |
 
 ## Model gate
 
-**Host: Cursor** — **Grok 4.7** via `implement-cursor` (`grok-4.7-high`). Never Cursor Claude.
-Claude Code (optional): `model: sonnet` / medium if you implement there instead.
-Read `$ROOT/.claude/skills/references/model-routing.md`.
-
-
-
-## Graphify (apaleo)
-
-Before broad codebase search in `$APALEO`, follow `$ROOT/.claude/skills/references/graphify.md`: merge graphs if needed, then `graphify query|path|explain`. After meaningful C# edits, `graphify update .` when the CLI is available (AST-only). Skip cleanly if Graphify is missing.
-
-## When to run
-
-After `/specify`. In the simple manual lane, this is the only execution command. For a bugfix,
-default to: reproduce → add/update the regression check → prove it fails for the original defect →
-fix → rerun it green → run the plan's named checks. Do not create a separate `implement-tests`
-stage. For other manual follow-ups, author the needed tests first where practical, then implement
-and verify in this same session. Invoking `/implement` directly after `/specify` selects this
-manual lane. In the full pipeline, it follows `/implement-tests` when that stage is selected.
-Not for planning, the independent review, commit, or push. This stage owns implementation plus the
-complete plan-scoped verification/fix loop.
+Host: Cursor Grok 4.7 via `implement-cursor` (`grok-4.7-high`); never Cursor Claude. Claude Code:
+`sonnet` at medium. `model`/`effort` frontmatter applies only in Claude Code. The plan was written
+on a stronger model for exactly this route; follow it rather than re-planning. See
+`$ROOT/.claude/skills/references/model-routing.md`.
 
 ## Cursor chat title
 
-On Cursor, rename this chat once the plan resolves. This is a stage session: status `implement`
-while working, `waiting` when you stop for the user, and `done` when plan verification finishes.
-Follow `references/cursor-chat-title.md`.
+On Cursor, rename this chat once the plan resolves: status `implement` while working, `waiting`
+when you stop for the user, and `done` when verification finishes (`references/cursor-chat-title.md`).
 
-## Adopted skills
+## Setup
 
-- **Existing patterns first:** `$ROOT/.claude/skills/references/existing-patterns.md` — the primary implementation constraint. Cite the neighbor before adding a file or type.
-- When the plan changes an API action, load `$ROOT/.claude/skills/references/api-endpoint-patterns.md` and execute its action matrix. Re-check the resource's sibling actions before changing controller naming, request contracts, authorization, or service layering.
-- Load `clean-code` at start (invoke or file-read). Apply while writing C# **as the local neighbor already does**.
-- **New C# files:** file-scoped namespaces only (`namespace X.Y;`) — see `$ROOT/AGENTS.md` Conventions. Do not introduce classic `namespace { }` blocks in new files.
-- **Hard precondition:** load `e2e-test-engineering-development` **before** touching `e2e/` in a service repo or any file under `development/`. Migrated-service specs go in that repo's `e2e/tests`. Payment specs stay in `development/src/tests/payment`.
-- Worktree rules: `$ROOT/.claude/skills/references/worktrees.md`.
-- If the plan includes schema: follow `$ROOT/.claude/skills/references/db-migrations.md`. If the plan includes a ConfigCat / Features API flag: follow `$ROOT/.claude/skills/references/feature-flags.md` — add constant + `IFeatureSettingsProvider` gate + E2E helper; **remind the user** with filled Setup for humans (ConfigCat + local config) before claiming the feature is testable. Prefer finishing/committing the **`[DB-MIGRATION]`** slice (migration + snapshot; entities only if the plan says so) **before** API/domain that depends on it — often a separate branch/PR. Never Drop*/Rename* in the same PR as removing entity properties.
-- If the plan adds or changes API routes: register **each** action in OPA `endpoint_permissions` (`references/identity.md` — list, by-id, and write routes). Mirror the sibling entries in the same resource `data.json`.
-- For property-association mutations, authorize **old ∪ new** in OPA (`[ResourceMetadata]` +
-  `IPropertyLevelRequestModel` + custom `every` on concat `property_ids`). Do not add an API wrapper
-  service for that. PUT bodies are full replace. Details: `references/api-endpoint-patterns.md`.
-- Never auto-invoke `setup-new-service`.
-- **Linear (manual invocation only):** if `prompt.md` has a Linear id and this is the first manual
-  implement pass, ask before `keep-linear-updated` → **In Progress** or assignment. An automated
-  `/implement-pipeline` stage never changes Linear or speaks as the user.
+**Plan.** Accept an explicit path, `PlanFile:`, a branch name, or the current worktree branch, and
+resolve `$ROOT/ai-plans/<branch>/` (the highest complete five-file set; prefer `vN/`). Read
+`product.md`, `implementation.md`, `deferred-scope.md`, and `pipeline.json`, plus `red-proof.md`
+in the pipeline. Never read `prompt.md`. If nothing resolves, stop and ask. The plan folder name is
+the target branch.
 
-State loaded skills/paths and resolved plan path in the output.
+**Load.** `references/existing-patterns.md` (the primary constraint), `clean-code`,
+`references/worktrees.md`, and `e2e-test-engineering-development` before touching `e2e/` or
+`development/`. Load these when the plan touches their area:
+- `references/api-endpoint-patterns.md` for API actions;
+- `references/identity.md` for authorization;
+- `references/db-migrations.md` for schema;
+- `references/feature-flags.md` for flags (remind the user of the ConfigCat and local setup
+  before calling the feature testable);
+- `references/api-enum-wire-values.md` for enums.
 
-## Plan resolution
+Before broad search in apaleo, use Graphify per `references/graphify.md`; skip it cleanly when it
+is missing. Never auto-invoke `setup-new-service`.
 
-Accept: explicit paths, `PlanFile:` only, branch name, or current worktree branch → `$ROOT/ai-plans/<branch>/` (highest complete five-file plan; prefer `vN/` if present). Read `product.md`, `implementation.md`, `deferred-scope.md`, and `pipeline.json`; do not read `prompt.md`/the specification transcript. When the full pipeline authored tests first, read `red-proof.md`. If nothing resolves → stop and ask.
+**Worktree failsafe**, before any write:
+1. Parked mains stay on `master`; never switch a branch in `$ROOT/<repo>`.
+2. Ensure `$WT=$ROOT/worktrees/<target>` with `worktree-start` in existing-branch mode only. Never
+   create from master here. Attach only the repositories the plan names:
+   - `development` only for payment E2E or another file that still lives there;
+   - `identity`, `agent-skills`, or `angular-api-proxy` only when `pipeline.json` paths or
+     `implementation.md` need them.
 
-The plan folder name is the **target branch**. Do not start coding until the worktree failsafe below passes.
+   A new repository need is a plan defect.
+3. Pipeline: the implement-tests commit holds the tests, and they are the contract. Uncommitted
+   changes are acceptable only inside `test_paths` from an interrupted handoff; any other
+   pre-existing changes mean stop.
+4. Each in-scope repository is on `<target>`. Re-check immediately before the first write in it.
+   Edit only under `$WT/**` (Cursor: `move_agent_to_root` → `$WT`).
+5. If a required worktree fails, stop with questions. No partial implementation.
 
-## Branch / worktree failsafe (before any code change)
-
-After plan resolution:
-
-1. Confirm mains on `master`. Never `git switch` feature branches in `$ROOT/apaleo`, `$ROOT/development`, `$ROOT/identity`, `$ROOT/agent-skills`, or `$ROOT/angular-api-proxy`.
-2. Ensure `$WT=$ROOT/worktrees/<target>` via **`worktree-start`** if no in-scope feature repo is present or on the wrong branch (existing-branch mode only — never create from master here). Team-plugin-only plans use `$WT/agent-skills` and Angular-client-only plans use `$WT/angular-api-proxy`; neither requires `$WT/apaleo`.
-3. **development:** ensure `$WT/development` only when the plan changes payment E2E or another file that still lives in `development`. Core and other migrated-service E2E live in that service's `e2e/` and do not need a development worktree. If a new development need appears that the plan did not name, report a plan defect.
-4. **identity:** if `pipeline.json` paths or `implementation.md` require Identity work → ensure `$WT/identity`. Otherwise do not force a worktree; if a new need appears, report a plan defect (`references/identity.md`).
-5. **agent-skills:** if `pipeline.json` paths or `implementation.md` require team-plugin work → ensure `$WT/agent-skills`. Otherwise do not force a worktree; never edit the parked `$ROOT/agent-skills` clone.
-6. **angular-api-proxy:** if `pipeline.json` paths or `implementation.md` require Angular API client or generator work → ensure `$WT/angular-api-proxy`. Otherwise do not force a worktree; never edit the parked `$ROOT/angular-api-proxy` clone. Regenerate `modules/**` with the canonical flow; never hand-edit generated clients.
-6. In `/implement-pipeline`, the implement-tests stage has already committed the tests. Those files
-   are the contract; preserve them. Uncommitted dirt is only acceptable when it matches
-   `pipeline.json.test_paths` from an interrupted handoff. Any other pre-existing dirt → stop.
-7. **Double-check:** the in-scope worktree(s) are on `<target>`. For product work, `git -C $APALEO branch --show-current` equals `<target>` (and `$DEV` / `$IDENTITY` / `$AGENT_SKILLS` when required). Re-check immediately before the first write in each repo.
-8. Cursor: `move_agent_to_root` → `$WT`. Edit only under `$WT/**`. Plans append to `$ROOT/ai-plans/<branch>/progress.md`.
-9. Report paths in the output. If a required worktree fails → blocked (questions only); no partial implementation.
+**Linear (manual lane, first pass only):** take the issue id from the branch name and ask before
+moving it to In Progress via `keep-linear-updated`. A pipeline stage never changes Linear.
 
 ## Authority
 
-1. **Existing repo patterns** (`references/existing-patterns.md`) + `$ROOT/AGENTS.md` / nearest `AGENTS.md` — match the cited neighbor
-2. User explicit instructions and `clean-code` as applied to that local pattern
-3. `implementation.md` — technical execution
-4. `product.md` — product intent and AC
+1. Existing repo patterns and `AGENTS.md` (root and nearest): match the cited neighbour.
+2. The user's explicit instructions, and `clean-code` as that neighbour applies it.
+3. `implementation.md` for technical execution.
+4. `product.md` for product intent and the acceptance criteria.
 
-If plan docs conflict with each other → stop with minimal numbered questions. If the plan invents a shape the repo does not have, or repo evidence contradicts the plan → explain and get direction before changing scope. Do not “improve” the neighbor.
+Plan files that conflict with each other, or repo evidence that contradicts the plan: stop with
+numbered questions. Do not "improve" the neighbour.
 
-## Rules
+Use the plan the way it is written for you:
+- Copy the shapes in `## Read first` before searching more widely.
+- Work through `## Steps` in order. Confirm each step's done-when check before the next.
+- Treat every `## Traps` entry as a known failure mode, and avoid it.
+- `## Decisions` and `## Assumptions` are settled; do not revisit them.
+- `product.md` `## Examples` hold the exact expected values.
+- A choice the plan does not settle (a name, placement, status code, or behaviour) is a plan
+  defect. Manual lane: ask. Pipeline: report `PLAN_DEFECT`, never a new decision.
 
-- Implement only in-scope work. No opportunistic refactors.
-- API enums: follow the plan `D#` / Contracts table. Default is CLR member names (`references/api-enum-wire-values.md`). Do not invent display-string `JsonConverter`s if the plan is silent — stop and ask.
-- **Reuse before create** — search, cite `repo/path:line`, record the search in `progress.md`. A new type needs one line why the existing one does not fit.
-- Prefer LSP for symbol questions; say when falling back to text search.
-- Cite `repo/path:line` for non-obvious claims (paths relative to repo root inside `$WT`).
-- In the simple manual lane, a bugfix regression check must demonstrate the original bad behavior
-  before the product fix, then pass afterward. Record that concise before/after evidence in
-  `progress.md`. A check that only executes the changed code is not enough. If automation is
-  genuinely impractical, the plan must already name why and the strongest repeatable alternative
-  (focused API/script check, fixture, or local repro). For other manual work, add or update tests
-  before product code where practical. No `red-proof.md` or separate `/implement-tests` handoff is
-  needed. In the full pipeline, treat supplied red tests as the independent contract. In both
-  lanes, never weaken, skip, delete, quarantine, or loosen an assertion.
-- Product/generated files may be edited only within `pipeline.json.allowed_paths`. If implementation
-  needs another path, update the complete plan first; do not expand scope silently.
-- After product construction, progressively load and execute
-  `$ROOT/.claude/skills/test-and-fix/SKILL.md` **inside this same session**. Do not launch another
-  agent or top-level stage. Run every `pipeline.json.test_commands` entry and fix plan-authorized
-  failures until the deterministic parser is green.
-- Use `python3 $ROOT/.claude/skills/pipeline/verification.py <branch> --root "$ROOT" --force` for
-  the final pass. It records command output, AC traceability, diff budget, convention/secret scans,
-  and optional mutation evidence. A command not executed and parsed is not a pass.
-- Localhost E2E, Swagger/proxy generation, and branch-image switching use the E2E stack lock. Always
-  restore the prior image/owner in `finally`-style cleanup.
-- After each implementation step, append to `$ROOT/ai-plans/<branch>/progress.md`: step #, what changed, files, checks + results, plan mistakes discovered.
-- Behind on master? For a manual `/implement`, suggest `/sync-master`; do not merge unattended.
-  `/implement-pipeline` performs its own clean-worktree synchronization before this fresh stage.
+## Phase 1 — Tests first
+
+**Manual lane.** Write the tests in `## Tests` before product code, following the rules in
+`$ROOT/.claude/skills/implement-tests/SKILL.md` ("Write tests that catch wrong implementations"):
+- exact values from the Examples;
+- data that separates the right source from a plausible wrong one;
+- the edges the plan settles;
+- literal test names.
+
+Run them and confirm they fail at an assertion because the behaviour is missing. When they cannot
+compile yet, add the skeleton first (members and signatures, no logic), then confirm the
+assertion-level red. A bugfix follows reproduce → regression check → red for the original defect
+→ fix → green. A check that only executes the changed code is not a regression check. Record the
+red and green evidence in `progress.md`. No `red-proof.md` is needed.
+
+**Pipeline.** The committed tests are the contract. When `red-proof.md` says `Failure level: none`,
+build the skeleton until they run, confirm they fail at their assertions, and append
+`## Red after skeleton` to `red-proof.md` (test, command, failing assertion or status; no compiler
+output).
+
+Both lanes: never weaken, skip, delete, quarantine, or loosen an assertion. In the pipeline, a test
+may change only for a plan-settled fixture or setup defect, and the runner restores anything else.
+
+## Phase 2 — Build
+
+- Follow `## Steps`, copying the `## Read first` neighbours. Implement only in-scope work; no
+  opportunistic refactors.
+- Reuse before creating. Search, cite `repo/path:line`, and record the search in `progress.md`. A
+  new type needs one line on why the existing one does not fit.
+- API routes: register every action in OPA `endpoint_permissions`, mirroring the sibling entries.
+  Property-association writes authorize old ∪ new property ids through `[ResourceMetadata]` +
+  `IPropertyLevelRequestModel`, not a wrapper service. PUT is a full replacement.
+- Enums follow the plan's decision; the default is CLR member names. Do not invent a
+  display-string converter.
+- Migrations: finish the `[DB-MIGRATION]` slice before the code that depends on it. Never
+  Drop/Rename in the same PR as removing entity properties.
+- Edit product and generated files only within `pipeline.json.allowed_paths`. A needed path outside
+  them is a plan defect. Regenerate generated clients with the canonical flow; never hand-edit them.
+- Prefer LSP for symbol questions, and say when you fall back to text search.
+- After each step, append to `progress.md`: step, files, check and result, and any plan mistake.
+
+## Phase 3 — Verify
+
+Load and execute `$ROOT/.claude/skills/test-and-fix/SKILL.md` in this same session; never launch
+another agent. Run every `pipeline.json.test_commands` entry until the parser is green. While the
+branch image still runs:
+- capture the **API samples** when the plan changes an HTTP endpoint;
+- run the **UI check** when `## Tests` has a `ui` row.
+
+test-and-fix describes both.
+
+Finish with:
+
+```bash
+python3 "$ROOT/.claude/skills/pipeline/verification.py" <branch> --root "$ROOT" --force
+```
+
+A command that was not executed and parsed is not a pass. Localhost E2E, Swagger/proxy
+generation, and branch-image switching use the E2E stack lock, with the prior image restored in
+`finally`-style cleanup. Behind master in the manual lane: suggest `/sync-master`; never merge
+unattended.
+
+## Phase 4 — Self-review (manual lane only)
+
+The manual lane has no review stage, so review your own diff with the independent reviewer's
+method from `$ROOT/.claude/skills/review/SKILL.md`. Act as a sceptic, not the author.
+1. **Tier 1 lenses** (security and authorization, logic and data, performance and reliability,
+   contract and intent) on the diff. Fix every finding you can back with a failure scenario.
+2. **Test strength**: run `references/test-strength.md` and add a hardening test for every mutant
+   that survives.
+3. **Tier 2 polish** on changed lines only, behaviour unchanged.
+4. Re-run the affected commands and `verification.py --force`. Append a short `## Self-review` to
+   `progress.md`: what you fixed, the test-strength table, and what you polished.
+
+For security, money, tenancy, schema, or public-contract changes, recommend an independent
+`/review <branch>` in a new chat before the PR.
+
+## Pipeline execution (`/implement-pipeline`)
+
+The plan should contain every decision. Exhaust safe in-scope work, retries, mechanical
+corrections, and reversible local recovery. Emit `PIPELINE_INPUT_REQUIRED` with the minimum
+numbered questions only when progress is impossible without the user; the runner resumes this
+session. Report a missing decision as `PLAN_DEFECT`; no stage report introduces a product or
+architectural decision. Never emit `PIPELINE_STAGE_SKIPPED`. Do not write `review-<n>.md`: the
+runner starts review in a separate fresh session.
 
 ## Blocked
 
-Output only numbered questions. Stop.
+Output only numbered questions, then stop.
 
-## Automated execution (`/implement-pipeline`)
+## Output
 
-This stage is selected and therefore required. The plan is expected to contain every decision.
-Exhaust safe in-scope work, retries, mechanical corrections, and reversible local recovery. Only
-emit `PIPELINE_INPUT_REQUIRED` when progress is impossible without a decision or action solely the
-user can provide, followed by the minimum numbered questions. The runner resumes this exact session
-after the answer. Never emit `PIPELINE_STAGE_SKIPPED`. Provider retries/fallbacks remain fresh.
-
-If a hard decision is missing, record it in the complete plan set through `/specify` or the active
-planning flow. The runner will automatically rebind to that revision; do not rely on a chat-only
-answer that later fresh sessions cannot see.
-No stage report may introduce a product or architectural decision. Report the missing choice as
-`PLAN_DEFECT`; do not record a new `PIPELINE_DECISION`.
-
-## Output contract (complete)
-
+```text
+Plan: <resolved path> · Branch: <target> · Lane: manual | pipeline
+Worktree: $ROOT/worktrees/<target> (apaleo ok · development ok|not required · …) · Mains: master
+Built: <bullets mapped to plan steps>
+Red → green: <test → failing assertion → passing>
+Checks: <command → parsed result, evidence path>
+API samples / UI: <path | n/a>
+Self-review: <fixed n · mutants k/m killed, h hardening tests · polished p | pipeline: review stage>
+Plan mistakes: <none | list>
+Next: <manual lane complete | /review <branch> recommended | next pipeline stage>
 ```
-Skills loaded: <list>
-Plan: <resolved path>
-Branch: <target>
-Worktree: $ROOT/worktrees/<target>
-  apaleo:      ok | started | blocked
-  development: ok | started | not required | blocked
-Mains: apaleo=master | development=master
-Behaviour: <short>
-Decisions: <key D# or deviations — none if none>
-Built: <bullets mapped to plan sections>
-Checks: <command → parsed result + evidence path>
-Bugfix: <red evidence → green evidence | n/a>
-Traceability: <AC → named test → command → pass>
-Next: manual lane complete | <next selected pipeline stage>
-```
-
-Do not perform the formal review or write `review-<n>.md` here. If `review` was selected, the runner
-starts it in a separate fresh session so it has no implementation-session context or bias.

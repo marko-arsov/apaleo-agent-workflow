@@ -3,6 +3,8 @@
 
 Obvious skips, deleted tests, and assertion edits are restored from that
 commit. Import and comment edits stay. Other test edits stay and are named.
+An assertion or test line that is removed and re-added unchanged (ignoring
+whitespace) counts as moved, not changed.
 """
 
 from __future__ import annotations
@@ -10,12 +12,16 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 _SKIP = re.compile(
     r"\b(?:it|test|describe)\.(?:skip|only|todo)\b"
     r"|\b(?:xit|xdescribe|xcontext|fit|fdescribe)\s*\("
     r"|\bpending\s*\("
+    r"|\[\s*(?:Fact|Theory)\s*\([^\]]*\bSkip\s*="
+    r"|\[\s*Ignore\b"
+    r"|\bSkip\.(?:If|IfNot)\s*\("
 )
 _ASSERT = re.compile(
     r"\bexpect\s*\("
@@ -24,7 +30,14 @@ _ASSERT = re.compile(
     r"|\bto(?:Be|Equal|Throw|Have|Contain|Match|StrictEqual)\s*\(",
     re.IGNORECASE,
 )
-_TEST_OPEN = re.compile(r"\b(?:it|test|describe)\s*\(")
+# C# checks that the generic pattern misses: mock verification and data rows
+# (a data row carries the inputs and expected values of a theory case).
+_CSHARP_ASSERT = re.compile(
+    r"\.(?:Verify(?:All|NoOtherCalls)?|Received|DidNotReceive)\s*\("
+    r"|\bTimes\.\w+"
+    r"|\[\s*(?:InlineData|DataRow|TestCase)\s*\("
+)
+_TEST_OPEN = re.compile(r"\b(?:it|test|describe)\s*\(|\[\s*(?:Fact|Theory|Test|TestMethod)\b")
 _IMPORT = re.compile(
     r"^\s*(?:import\s|export\s|from\s|using\s|#include\s"
     r"|const\s+\w+\s*=\s*require\s*\(|\w+\s*=\s*require\s*\()"
@@ -56,9 +69,9 @@ def classify_diff(diff: str) -> tuple[str, str]:
         return "clean", ""
     if "Binary files" in diff and "differ" in diff:
         return "kept", "binary test file"
-    removed_assert = added_assert = False
-    removed_test = added_test = False
-    skip = False
+    lines: dict[str, dict[str, list[str]]] = {
+        kind: {"-": [], "+": []} for kind in ("skip", "assert", "test")
+    }
     other = False
     saw_change = False
     for line in diff.splitlines():
@@ -70,34 +83,37 @@ def classify_diff(diff: str) -> tuple[str, str]:
         if not body.strip():
             continue
         saw_change = True
-        stripped = body.strip()
-        commented = stripped.startswith(("//", "*", "/*", "#"))
+        sign = line[0]
+        normalized = re.sub(r"\s+", "", body)
+        commented = body.strip().startswith(("//", "*", "/*", "#"))
         if _SKIP.search(body) and not commented:
-            skip = True
-        if _ASSERT.search(body):
-            if line[0] == "-":
-                removed_assert = True
-            else:
-                added_assert = True
+            lines["skip"][sign].append(normalized)
+        if _ASSERT.search(body) or _CSHARP_ASSERT.search(body):
+            lines["assert"][sign].append(normalized)
         if _TEST_OPEN.search(body):
-            if line[0] == "-":
-                removed_test = True
-            else:
-                added_test = True
+            lines["test"][sign].append(normalized)
         if not _IMPORT.match(body) and not commented:
             other = True
     if not saw_change:
         return "clean", ""
-    if skip:
+
+    def unmatched(kind: str, sign: str) -> bool:
+        opposite = "+" if sign == "-" else "-"
+        return bool(Counter(lines[kind][sign]) - Counter(lines[kind][opposite]))
+
+    if unmatched("skip", "+"):
         return "cheat", "skip or only"
+    removed_assert, added_assert = unmatched("assert", "-"), unmatched("assert", "+")
     if removed_assert and not added_assert:
         return "cheat", "assertion removed"
     if removed_assert and added_assert:
         return "cheat", "assertion changed"
-    if removed_test and not added_test:
+    if unmatched("test", "-") and not unmatched("test", "+"):
         return "cheat", "test case removed"
     if not other:
         return "safe", "imports or comments only"
+    if lines["assert"]["-"] or lines["test"]["-"]:
+        return "kept", "assertion or test lines moved or renamed"
     return "kept", "setup or helper edit"
 
 

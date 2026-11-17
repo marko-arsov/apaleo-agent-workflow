@@ -6,9 +6,13 @@ configuration surface.
 
 ## Plan, iterate, then execute
 
-`/specify` is the only plan author and writes no product code. It researches established patterns,
-interviews until consequential choices are settled, and confirms stages and routes. The complete
-plan set under `ai-plans/<branch>/` is:
+`/specify` is the only plan author and writes no product code. It plans on the deep band (Cursor
+Opus 5.5 high, Claude Code `opus`) so that cheaper implementation routes can execute the plan
+without making product or design choices. It researches established patterns, runs an ambiguity
+sweep, asks only material questions (each with a recommendation, plus vetoable assumptions), and
+writes examples, decisions, traps, steps, and tests. `plan_lint.py` checks every
+`repo/path:line` citation against `origin` before the one-screen approval. The complete plan set
+under `ai-plans/<branch>/` is:
 
 - `prompt.md`, `product.md`, `implementation.md`, `deferred-scope.md`;
 - validated `pipeline.json` with context contracts, path boundaries, exact test commands,
@@ -31,15 +35,16 @@ implement-tests? → implement → review? → commit-and-push? → draft-pr?
 
 | Stage | Contract |
 |---|---|
-| `implement-tests` | Required when tests change. Test paths only. Produces assertion-level `red-proof.md` when a criterion is `red_required`; otherwise `Failure level: none` when the tests cannot run until planned product types exist. |
-| `implement` | Always required. Builds product code, then runs the complete verify/fix procedure and named commands in the same session. |
-| `review` | Optional independent fresh-context review against the specification, tests, rules, and semantic reuse/DRY. In the pipeline it receives the current `/add-rule` inventory, applies safe plan-authorized corrections and same-behavior improvements, verifies narrowly, and reruns the deterministic rule scan; Tier-1 violations must be repaired, while plan/behavior findings remain advisory. Direct `/review <branch> [focus]` is check-only and asks for confirmation when the review basis or solution is ambiguous, then hands confirmed changes to `/specify` and `/implement`. |
+| `implement-tests` | Required when tests change. Test paths only. Produces assertion-level `red-proof.md` when a criterion is `red_required`; otherwise `Failure level: none` when the tests cannot run until planned product types exist, and `/implement` records the assertion-level red after its skeleton. Tests target plausible wrong implementations and list unsettled edges for review. |
+| `implement` | Always required. Builds the plan's steps against the tests, then runs the complete verify/fix procedure, named commands, and API samples (or a UI check for a `ui` test) in the same session. In the manual lane it also writes the tests first and finishes with a self-review: Tier 1 lenses, the test-strength mutation check, and polish. |
+| `review` | Optional fresh-context review in two passes. Tier 1 hunts bugs, security/tenancy holes, performance problems, and contract or migration breakage, verifies each finding with a failure scenario or failing test, and fixes it. Tier 2 applies the `/add-rule` inventory and polishes changed lines for reuse, simplicity, neighbour consistency, and placement without changing behaviour. Between the two, a test-strength pass applies plausible wrong implementations and adds a hardening test for each one that no test catches. Review also checks `api-samples.md` against the examples and Swagger. The deterministic rule scan then reruns. The stage pauses only for a High finding it truly cannot fix; everything else unfixed is listed under Open. Direct `/review <branch> [bugs\|polish] [focus]` reports first, then applies the findings the user picks. |
 | `commit-and-push` | Optional deterministic safety scan, commit, and non-force push. |
 | `draft-pr` | Optional deterministic draft PR; requires `commit-and-push`. |
 
 `/test-and-fix` remains a reusable procedure loaded by `/implement`, and a manual after-PR tool. It
 is not a top-level stage. Version-1 manifests are translated in memory; their files remain unchanged.
-Implementation and publish safety gates fail closed; review is advisory. Each successful
+Implementation and publish safety gates fail closed; review is advisory except for an unfixable
+High finding, which pauses for the user. Each successful
 `implement-tests`, `implement`, and `review` gets one local commit. A later skip, deleted test,
 or changed assertion is restored from the implement-tests commit and the affected command runs
 once. A failing restore still publishes, with that failure named on the draft PR.
@@ -100,8 +105,8 @@ machine scope, this workspace, or both. It confirms the providers and exact sett
 Agent Flow remains independent. The shared evaluator is a versioned local snapshot, not a live
 link to another workflow. See `references/model-policy.md` for the settings and evidence contract.
 
-Every `/specify`, including manual work, evaluates the selected stages offline with no extra
-model call. Implementation, test authoring, and review are placed on different labs when a
+A pipeline-lane `/specify` evaluates the selected stages offline with no extra model call; the
+manual lane skips the evaluator. Implementation, test authoring, and review are placed on different labs when a
 reviewed model in band exists. Balanced model-specific effort is preferred; difficult or risky stages can escalate.
 Maximum effort requires an explicit choice. Missing optional metadata adds no questionnaire.
 Existing pins remain fixed, and approved plans retain their saved routes after defaults change.
@@ -139,11 +144,12 @@ The deterministic gates verify outcomes rather than stage claims:
   secrets, blocking conventions, missing implementation traceability, or enabled mutation failures stop the run;
 - plan revisions are preserved as audit history and take effect automatically on the next run;
 - pre-commit uses fast diff-scoped convention/Semgrep and secret/gitleaks checks;
-- review never receives implementation reasoning and audits ACs, tests, correctness, then
-  rules/semantic-DRY in that order. It receives the registered rule inventory and runner-verified
-  post-review deterministic scan; pipeline review applies only safe in-plan corrections and
-  narrow verification, and must eliminate Tier-1 scanner findings. Direct review is no-edit.
-  Missing evidence and plan/behavior findings remain advisory;
+- review never receives implementation reasoning. Tier 1 (bugs, security, performance) runs before
+  Tier 2 (rules and polish of changed lines). It receives the registered rule inventory, and the
+  runner repeats the deterministic scan afterwards; Tier-1 scanner findings must be gone. Edits stay
+  within manifest paths. Only a `PIPELINE_INPUT_REQUIRED` for an unfixable High finding pauses the
+  run; missing evidence and other unfixed findings remain advisory. Direct review edits only what
+  the user picks;
 - `dotnet stryker --since:main` is opt-in only for authorization or billing risk.
 
 Semgrep and gitleaks are used when installed; deterministic local fallbacks still run when they are
@@ -320,6 +326,52 @@ Local one-file run, from that repo's `e2e/` directory, needs GitHub Packages aut
 - Plans remain complete and auditable; workflow configuration never edits application repositories.
 
 ## Maintenance log
+
+- 2026-11-17: The chat running `/implement-pipeline` is now a supervisor
+  (`references/pipeline-supervisor.md`). On a stop it diagnoses the recap, applies a playbook
+  built from the stop reasons of 79 past runs, and resumes. Examples: missing worktree,
+  sync-master conflict, Docker down, a stale E2E lock, a provider outage, an out-of-plan
+  `.git/HEAD`, a failed verification. It answers pending questions that the plan or references
+  already settle, citing the source, and escalates only real blockers, with a two-per-class and
+  six-per-session recovery budget. The worker also repairs a rejected stage result (report
+  contract, red proof, out-of-plan edits) in the same session up to two times before stopping.
+  The test judge stays inside the worker; the supervisor never overrides it.
+
+- 2026-11-17: `/implement` runs in four phases: tests first (manual lane, or red after skeleton in
+  the pipeline), build by plan steps, verify, and a manual-lane self-review that applies review's
+  Tier 1 lenses, the test-strength check, and polish. Verification captures `api-samples.md` (the
+  real request/response for each changed endpoint, from a git-excluded scratch spec) and, for a
+  `ui` test row, browser screenshots. Review reads those samples and runs the targeted mutation
+  check in `references/test-strength.md`: 3–5 plausible wrong implementations, a hardening test
+  for each survivor, and at most two E2E mutants under the stack lock. Specify examples and
+  implement-tests data must give each candidate source a distinct value (SL-137).
+
+- 2026-11-17: `/specify` is now spec-driven planning on the deep band (Cursor Opus 5.5 high,
+  Claude Code `opus`) for cheaper implementation routes. The flow is ground (refresh parked mains
+  to `origin`), research, ambiguity sweep, one batch of questions with recommendations plus
+  vetoable assumptions, design, check, and a one-screen approval. `product.md` carries
+  Given/When/Then examples with concrete values. `implementation.md` carries decisions, traps
+  (including a pre-mortem), "read first" neighbours, steps with done-when checks, and literal test
+  names, under a size budget. The new `pipeline/plan_lint.py` fails on citations missing on
+  `origin`, missing sections, placeholders, unmatched AC ids, and descriptive C# test names. The
+  manual lane skips the model evaluator. After approval, a manual-lane `/implement` runs in a new
+  chat on the implement route.
+
+- 2026-11-17: Review is now a two-tier PR-style reviewer. Tier 1 hunts bugs, security/tenancy,
+  performance, and contract/migration problems, verifies each with a failure scenario or failing
+  test, and fixes it. Tier 2 polishes changed lines (reuse, simplification, neighbour consistency,
+  placement, comments), ranked from the comments human reviewers left on 93 recent PRs. Native
+  reviewers (`/code-review`, `/security-review`, `/simplify`) are optional candidate sources. The
+  report dropped the AC matrix and the "next: /specify" advisories. The pipeline pauses only for a
+  High finding the reviewer truly cannot fix. `implement-tests` may read existing signatures,
+  designs tests against plausible wrong implementations (exact values, distinct values,
+  plan-settled edges), and lists unsettled edges. `/implement` records assertion-level red after its
+  skeleton when the test stage could only declare `Failure level: none`. The test judge now also
+  catches C# cheats: xUnit `Skip =` and `[Ignore]`, a removed `[Fact]`/`[Theory]`/`[Test]`,
+  removed or changed `[InlineData]` rows, and loosened `Verify`/`Times`. It treats an assertion
+  that is removed and re-added unchanged as moved, not changed, and only an added skip counts as
+  a cheat. Review receives every test file edited after the implement-tests checkpoint, with a
+  diff command, and judges the setup-side edits the patterns cannot.
 
 - 2026-11-10: Cursor chats for `/specify`, `/implement`, and `/implement-pipeline` are renamed to
   the issue id, a few words from the issue title, and the live status. The pipeline chat updates

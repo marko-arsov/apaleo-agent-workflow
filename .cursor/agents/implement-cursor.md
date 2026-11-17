@@ -1,8 +1,8 @@
 ---
 name: implement-cursor
 description: >-
-  Implements an Apaleo ai-plans branch on Grok inside the feature worktree
-  with light verification. Use for /implement in Cursor.
+  Implements an Apaleo ai-plans branch on Grok inside the feature worktree: tests first, plan
+  steps, full verification with API samples, and a manual-lane self-review. Use for /implement in Cursor.
 model: grok-4.7-high
 force-default-model: true
 ---

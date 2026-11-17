@@ -73,6 +73,48 @@ class ClassifyTests(unittest.TestCase):
         kind, reason = classify_diff(_diff("const result = 1;", "expect(result).toBe(1);"))
         self.assertEqual((kind, reason), ("kept", "setup or helper edit"))
 
+    def test_xunit_skip_is_a_cheat(self) -> None:
+        kind, reason = classify_diff(_diff("    [Fact]", '    [Fact(Skip = "flaky")]'))
+        self.assertEqual((kind, reason), ("cheat", "skip or only"))
+
+    def test_removed_fact_attribute_is_a_cheat(self) -> None:
+        kind, reason = classify_diff(_diff("    [Fact]\n    public void Books()", "    public void Books()"))
+        self.assertEqual((kind, reason), ("cheat", "test case removed"))
+
+    def test_removed_inline_data_row_is_a_cheat(self) -> None:
+        kind, reason = classify_diff(
+            _diff('    [InlineData("MUC", 403)]\n    [InlineData("BER", 200)]', '    [InlineData("BER", 200)]')
+        )
+        self.assertEqual((kind, reason), ("cheat", "assertion removed"))
+
+    def test_loosened_mock_verification_is_a_cheat(self) -> None:
+        kind, reason = classify_diff(
+            _diff(
+                "_repository.Verify(x => x.SaveAsync(), Times.Once);",
+                "_repository.Verify(x => x.SaveAsync(), Times.AtLeastOnce);",
+            )
+        )
+        self.assertEqual((kind, reason), ("cheat", "assertion changed"))
+
+    def test_reindented_assertion_is_moved_not_changed(self) -> None:
+        kind, reason = classify_diff(
+            _diff("expect(result).toBe(1);", "    expect( result ).toBe( 1 );")
+        )
+        self.assertEqual((kind, reason), ("kept", "assertion or test lines moved or renamed"))
+
+    def test_reordered_assertions_are_moved_not_changed(self) -> None:
+        kind, _ = classify_diff(
+            _diff(
+                "expect(a).toBe(1);\nexpect(b).toBe(2);",
+                "expect(b).toBe(2);\nexpect(a).toBe(1);",
+            )
+        )
+        self.assertEqual(kind, "kept")
+
+    def test_removed_skip_is_not_a_cheat(self) -> None:
+        kind, _ = classify_diff(_diff('it.skip("books", () => {', 'it("books", () => {'))
+        self.assertNotEqual(kind, "cheat")
+
 
 class ReportTests(unittest.TestCase):
     def test_failing_restore_is_not_described_as_passed(self) -> None:

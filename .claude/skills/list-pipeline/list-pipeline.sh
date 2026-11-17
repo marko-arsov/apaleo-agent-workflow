@@ -9,19 +9,19 @@ Apaleo implementation pipeline
 
 Plan
 ----
-  /specify                 concise complete plan → manual /implement or full pipeline
+  /specify                 Opus planning: questions + assumptions → examples, decisions, traps, steps
 
 Simple manual lane
 ------------------
   /specify HC-3333
-  /implement HC-3333        focused tests + implementation in one session; no runner, review, or publish
+  /implement HC-3333        tests first + plan steps + verify + self-review in one session; no runner or publish
                             isolated bugfix: reproduce, red regression check, fix, green — still this lane
 
 Selected execution lane
 -----------------------
   /implement-tests         test-only TDD red phase; required when tests change
   /implement               product code + internal verify/fix loop; always required
-  /review <branch> [focus] fresh manual check-only review; ambiguity stops for confirmation
+  /review <branch> [bugs|polish] [focus]  bug/security/perf hunt + polish; reports, then applies what you pick
   /commit-and-push         optional deterministic publish
   /draft-pr                optional draft PR; requires commit-and-push
   /implement-pipeline      detached fresh stages + autonomous recovery + progress/verification
@@ -62,7 +62,7 @@ Manual recovery
 Default AI routes
 -----------------
   /update-models   confirmed machine/project model and effort defaults; watch records cited evidence
-  /specify         offline task evaluator; different labs when available; approved routes remain frozen
+  /specify         plans on Opus; pipeline lane evaluates stage routes offline; approved routes remain frozen
 
 Audit
 -----

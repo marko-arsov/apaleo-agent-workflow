@@ -162,6 +162,75 @@ class RunnerContractTests(unittest.TestCase):
             for item in reversed(shared):
                 item.stop()
 
+    def test_review_pauses_only_when_it_asks_the_user(self) -> None:
+        def attempt(outcome: str, requires_user: bool) -> runner.AttemptResult:
+            return runner.AttemptResult(
+                outcome=outcome,
+                reason="High finding needs a product decision",
+                failure_class="stage_contract",
+                provider="cursor",
+                model="gpt-5.6-sol-high",
+                session_id="session-1",
+                seconds=1,
+                changed_paths=[],
+                output_text=Path("/tmp/out.txt"),
+                output_json=Path("/tmp/out.json"),
+                resumable=True,
+                requires_user=requires_user,
+            )
+
+        self.assertFalse(runner.review_outcome_is_advisory("review", attempt("blocked", True)))
+        self.assertTrue(runner.review_outcome_is_advisory("review", attempt("blocked", False)))
+        self.assertTrue(runner.review_outcome_is_advisory("review", attempt("error", False)))
+        self.assertFalse(runner.review_outcome_is_advisory("review", attempt("ok", False)))
+        self.assertFalse(runner.review_outcome_is_advisory("implement", attempt("error", False)))
+
+    def test_review_prompt_lists_test_edits_after_the_test_stage(self) -> None:
+        manifest = {"test_paths": ["apaleo/test/**"]}
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "apaleo"
+            repo.mkdir()
+            with (
+                patch.object(runner, "_load_stage_commits", return_value={"implement-tests": {"apaleo": "abc123"}}),
+                patch.object(runner, "worktrees", return_value={"apaleo": repo}),
+                patch.object(
+                    runner,
+                    "changed_paths",
+                    return_value=["test/BookingTest.cs", "src/Booking.cs"],
+                ),
+            ):
+                edited = runner.tests_edited_after_test_stage("branch", Path(tmp), manifest)
+                review = runner.stage_context("review", "SL-1", "branch", Path(tmp), manifest=manifest)
+                implement = runner.stage_context("implement", "SL-1", "branch", Path(tmp), manifest=manifest)
+        self.assertEqual([item["path"] for item in edited], ["test/BookingTest.cs"])
+        self.assertIn(f"git -C {repo} diff abc123 HEAD -- test/BookingTest.cs", review)
+        self.assertNotIn("src/Booking.cs", review)
+        self.assertNotIn("implement-tests checkpoint. Read each diff", implement)
+
+    def test_stage_prompts_carry_api_samples_and_test_strength(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            review = runner.stage_context("review", "SL-1", "branch", Path(tmp))
+            implement = runner.stage_context("implement", "SL-1", "branch", Path(tmp))
+        self.assertIn("test-strength", review)
+        self.assertIn("api-samples.md", review)
+        self.assertIn("at most two E2E-level", review)
+        self.assertIn("api-samples.md", implement)
+        self.assertIn("Do not self-review", implement)
+
+    def test_rejected_stage_result_gets_a_repair_prompt_in_the_same_session(self) -> None:
+        prompt = runner.continuation_prompt(
+            "implement-tests",
+            runner.POSTCONDITION_REJECTED + "red-proof.md must declare 'Failure level: assertion'",
+        )
+        self.assertIn("rejected it", prompt)
+        self.assertIn("red-proof.md must declare 'Failure level: assertion'", prompt)
+        self.assertIn("PIPELINE_INPUT_REQUIRED", prompt)
+        self.assertNotIn("premature", prompt)
+        self.assertEqual(runner.MAX_POSTCONDITION_REPAIRS, 2)
+
+    def test_review_prompt_has_no_test_edit_note_without_a_checkpoint(self) -> None:
+        self.assertEqual(runner.test_edit_review_note([]), "")
+
     def test_review_postcondition_rejects_a_rule_scan_failure(self) -> None:
         manifest = {"allowed_paths": ["apaleo/**"], "test_paths": []}
         report = Path("/tmp/review-1.md")

@@ -20,8 +20,9 @@ implement-tests? → implement → review? → commit-and-push? → draft-pr?
 `/test-and-fix` is not a regular stage. `implement-tests` is mandatory when tests change.
 `/specify` runs the offline model evaluator, and the user confirms the routes. Review stays optional.
 Any valid route can be used for every AI phase.
-Implementation/publish safety gates fail closed. Pipeline review applies safe in-plan corrections
-without blocking later stages; direct review is check-only. Review outcomes and diff budgets are
+Implementation/publish safety gates fail closed. Pipeline review fixes verified bugs and polishes
+changed lines without blocking later stages, except that an unfixable High finding pauses for you.
+Direct review reports first and applies what you pick. Other review outcomes and diff budgets are
 advisory. The runner never invents fallbacks beyond the confirmed plan.
 
 The runner uses a cache-stable plan prefix, data context contracts, assertion-level red proof,
