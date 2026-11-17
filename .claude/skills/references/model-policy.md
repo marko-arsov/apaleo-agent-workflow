@@ -57,13 +57,15 @@ Backups, serialized writes, stale-file checks, atomic replacement, read-back and
 recovery journal protect settings. `models recover` restores an interrupted update;
 it stops rather than overwriting external edits.
 
-## Every specify
+## Pipeline-lane specify
 
-Write a small facts JSON using the task analysis already performed:
+`/specify` itself always plans on the deep band (`specify/SKILL.md`); the evaluator never routes
+it. The manual lane skips the evaluator. For the pipeline lane, write a small facts JSON using
+the task analysis already performed:
 
 ```json
 {
-  "stages": ["specify", "implement-tests", "implement", "review"],
+  "stages": ["implement-tests", "implement", "review"],
   "kind": "code",
   "size": "medium",
   "risk": "standard",
@@ -74,7 +76,7 @@ Write a small facts JSON using the task analysis already performed:
 }
 ```
 
-Use only selected AI stages, plus `specify` for an informational planning recommendation.
+Use only the selected AI stages.
 Size is `small|medium|large`; risk is `low|standard|high`. Missing facts retain balanced
 choices. `demanding_stages` optionally narrows stage-specific escalation. `routes`
 optionally records explicit user route arrays. Mechanical stages are ignored.
@@ -96,11 +98,9 @@ use reviewed model-specific mappings. Maximum levels are never selected automati
 
 For a full plan, evaluate the executable AI stages and copy the saved result into
 `pipeline.json.model_selection` and its `routes` into `pipeline.json.routes`.
-Evaluate `specify` separately only if its informational recommendation is needed;
-do not include a non-executable stage in the full route snapshot. An unresolved
+Do not include a non-executable stage in the route snapshot. An unresolved
 selection may be discussed while planning but cannot be executed. Explicit pins
 below the recommended capability produce advisory feedback, not silent replacement.
-For manual work, keep the compact route table; no detached pipeline is required.
 
 `models watch` reads `AA_API_KEY` from the environment or `~/.config/apaleo-models.env`
 and stores a cited snapshot from `GET /api/v2/language/models/free` at

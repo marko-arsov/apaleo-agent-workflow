@@ -119,6 +119,21 @@ class AttemptResult:
     requires_user: bool
 
 
+MAX_POSTCONDITION_REPAIRS = 2
+POSTCONDITION_REJECTED = "runner rejected the stage result: "
+
+
+def review_outcome_is_advisory(stage: str, result: AttemptResult) -> bool:
+    """Review problems never stop delivery, except a finding the reviewer asks the user about.
+
+    The review skill emits PIPELINE_INPUT_REQUIRED only for a High finding it truly cannot fix,
+    so that request pauses the run like any other stage; every other non-OK outcome is advisory.
+    """
+    if stage != "review" or result.outcome == "ok":
+        return False
+    return not (result.outcome == "blocked" and result.requires_user)
+
+
 def now_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
@@ -930,6 +945,48 @@ def sync_master(branch: str, reporter: Reporter) -> None:
             reporter.emit("synced", stage="preflight", message=f"merged origin/{base} into {name}")
 
 
+def tests_edited_after_test_stage(branch: str, plan_dir: Path, manifest: dict) -> list[dict]:
+    """Test files that later stages changed since the implement-tests checkpoint.
+
+    The test judge restores obvious cheats by pattern; review gets this list so it can
+    judge the edits the patterns cannot, such as changed inputs or mock returns.
+    """
+    baselines = _load_stage_commits(plan_dir).get("implement-tests") or {}
+    if not isinstance(baselines, dict):
+        return []
+    tests = manifest.get("test_paths") or []
+    repos = worktrees(branch)
+    edited: list[dict] = []
+    for name, baseline in baselines.items():
+        repo = repos.get(str(name))
+        if repo is None or not repo.is_dir():
+            continue
+        try:
+            paths = changed_paths(repo, str(baseline))
+        except TestJudgeError:
+            continue
+        edited += [
+            {"repo": str(repo), "baseline": str(baseline), "path": path}
+            for path in paths
+            if path_allowed(f"{name}/{path}", tests)
+        ]
+    return edited
+
+
+def test_edit_review_note(edited: list[dict]) -> str:
+    if not edited:
+        return ""
+    commands = "\n".join(
+        f"- git -C {item['repo']} diff {item['baseline']} HEAD -- {item['path']}" for item in edited
+    )
+    return (
+        "\nTest files edited after the implement-tests checkpoint. Read each diff and confirm no edit "
+        "makes a test easier to pass (changed inputs, mock returns, fixtures, or expected values moved "
+        "into helpers or constants). If one does, restore the original lines and record a High finding:\n"
+        + commands
+    )
+
+
 def stage_context(
     stage: str,
     task: str,
@@ -939,6 +996,11 @@ def stage_context(
     manifest: dict | None = None,
 ) -> str:
     manifest = manifest or {}
+    test_edit_note = (
+        test_edit_review_note(tests_edited_after_test_stage(branch, plan_dir, manifest))
+        if stage == "review"
+        else ""
+    )
     contract = (manifest.get("context_contracts") or {}).get(stage) or {}
     contract_text = (
         f"Context contract — reads: {', '.join(contract.get('reads') or [])}; "
@@ -949,7 +1011,12 @@ def stage_context(
         "implement-tests": (
             "Implement the complete plan-specified test suite before product code. Modify only the "
             "manifest's test_paths. Prefer E2E coverage; add unit/policy tests where the plan requires. "
-            "Do not read product source paths under change or prior implementation attempts. "
+            "You may read signatures, constructors, and models of existing product types so the tests "
+            "compile; do not read method bodies under change or prior implementation attempts, and take "
+            "expected values from the plan, never from production code. For each criterion, close the gap a "
+            "plausible wrong implementation would slip through: exact status and field values, distinct "
+            "values per field, and the plan-settled edges (permission, not found, validation, empty, "
+            "boundaries, flag off). List unsettled edges under 'Unspecified edges' instead of inventing them. "
             "When a criterion is red_required, prove assertion-level failure; compilation/type failure "
             "is invalid. When every criterion has red_required false because the tests need planned "
             "product types or a generated client that does not exist yet, write 'Failure level: none', "
@@ -972,29 +1039,34 @@ def stage_context(
             "Run every manifest test command through the deterministic verification helper until it parses green: "
             f"python3 {ROOT / '.claude/skills/pipeline/verification.py'} {task!r} --root {str(ROOT)!r} --force. "
             "Perform required Swagger/proxy generation and local E2E autonomously with the stack lock and "
-            "mandatory restoration. Do not self-review or write a review artifact."
+            "mandatory restoration. While the branch image runs, capture api-samples.md for every changed "
+            "HTTP endpoint (and the UI check when the plan has a ui test row) as test-and-fix describes, and "
+            "fix any mismatch with the Examples or Swagger. Do not self-review or write a review artifact."
         ),
         "review": (
-            "Review from scratch with no implementation-session context. Inspect only the actual diff, confirmed "
-            "plan, test evidence, and applicable rules. The supplied convention inventory is the authoritative "
-            "/add-rule output: apply its path scopes, inspect every Tier 2 match, and semantically check every "
-            "applicable Tier 3 statement. Review in this order: specification violations, test gaps, "
-            "correctness, then rules/conventions and repository-wide semantic reuse/DRY. Do not make a new "
-            "product or architecture decision, but apply unambiguous plan-authorized correctness fixes "
-            "and same-behavior convention/DRY improvements within manifest paths. Do not skip, delete, or "
-            "loosen an assertion: the runner restores that edit from the implement-tests commit. "
-            "A detected Tier 1 violation "
-            "is not advisory: repair it before completing the stage. After each repair, run the "
-            "narrowest affected named check and record its evidence; stop after three repair/verify cycles and "
-            "record only unresolved plan/behavior findings as advisory. Run the deterministic diff-scoped "
-            f"convention scan before completion: python3 {ROOT / '.claude/skills/pipeline/verification.py'} "
-            f"{branch!r} --root {str(ROOT)!r} --precommit. "
-            "Write a new review-<n>.md artifact with AC evidence and both audit declarations when possible. "
-            "Every finding needs file:line and a concrete failure scenario; write none for clean sections. "
-            "Plan/behavior findings, incomplete evidence, and environment failures are advisory; a Tier 1 scanner failure is enforced. "
+            "Review from scratch with no implementation-session context, using only the actual diff, the "
+            "confirmed plan, the tests, and the applicable rules. Tier 1 first: hunt bugs, security/tenancy "
+            "holes, performance problems, and contract or migration breakage; verify every candidate with a "
+            "concrete failure scenario (a failing test in test_paths where practical) and fix it within "
+            "manifest paths, rerunning the proving test and the narrowest named check. Check api-samples.md, "
+            "when present, against the Examples and Swagger. Then run the test-strength check "
+            "(references/test-strength.md): apply 3-5 plausible wrong implementations one at a time, confirm "
+            "a test fails, add a hardening test for every survivor, and restore the code after each. Then Tier 2: apply "
+            "the supplied /add-rule inventory to the changed paths and polish only changed lines for reuse, "
+            "simplicity, neighbour consistency, and placement, keeping behaviour the same. A Tier 1 registry "
+            "violation must be repaired. Do not make a new product or architecture decision. Do not skip, "
+            "delete, or loosen an assertion: the runner restores that edit from the implement-tests commit. "
+            "Run the deterministic diff-scoped scan before completion: "
+            f"python3 {ROOT / '.claude/skills/pipeline/verification.py'} {branch!r} --root {str(ROOT)!r} --precommit. "
+            "Write a new short review-<n>.md (Fixed, Test strength, Polished, Open, Checks, and both audit declarations). "
+            "Pause with PIPELINE_INPUT_REQUIRED only for a High finding that truly cannot be fixed (an "
+            "unsettled product choice, a path outside the manifest, or three failed verified attempts), "
+            "after finishing everything else; every other unfixed finding goes under Open and the run continues. "
             "Do not read progress.md, "
             "tests-implementation reports, recovery packets, provider output, or prior-agent rationale. "
-            "Do not switch stacks/images or rerun E2E during review."
+            "Do not switch stacks/images or rerun E2E during review, except for at most two E2E-level "
+            "test-strength mutants under the stack lock with the prior image restored."
+            + test_edit_note
         ),
     }[stage]
     handoff = (
@@ -1040,7 +1112,7 @@ settle a necessary choice, record `PLAN_DEFECT` in a complete plan revision; the
 automatically instead of requiring a specific version directory.
 {legacy}
 {recovery}
-Implementation and publish safety gates fail closed; review is advisory. Exhaust safe in-scope work, retries, local recovery, and reversible
+Implementation and publish safety gates fail closed; review is advisory except for an unfixable High finding. Exhaust safe in-scope work, retries, local recovery, and reversible
 operations before stopping. Do not ask permission for a local operation that the plan requires and
 the workflow makes reversible. Do not emit PIPELINE_STAGE_SKIPPED. End with exactly one terminal line:
 
@@ -1752,7 +1824,17 @@ def recovery_packet(
 
 
 def continuation_prompt(stage: str, reason: str, answer: str = "") -> str:
-    if answer:
+    if reason.startswith(POSTCONDITION_REJECTED):
+        authority = f"""
+The runner checked your `/{stage}` result and rejected it:
+
+{reason[len(POSTCONDITION_REJECTED):].strip()}
+
+Fix exactly this in the current filesystem, re-run whatever proves the fix, and finish the stage.
+Keep valid work. Do not weaken, skip, or delete tests, and do not edit the plan files. If the fix
+needs a decision or a path outside the plan, end with `PIPELINE_INPUT_REQUIRED` instead.
+""".strip()
+    elif answer:
         authority = f"""
 The user answered the pending question:
 
@@ -1836,6 +1918,7 @@ def run_ai_stage(
     routes = stage_routes(manifest, stage)
     recovery_packets: list[Path] = []
     last_reason = "no route attempted"
+    postcondition_repairs = 0
     reported_policy_changes: set[str] = set()
 
     def report_policy_update() -> None:
@@ -1888,9 +1971,46 @@ def run_ai_stage(
         continuation: int,
         artifacts_before: set[str],
     ) -> str | None:
-        nonlocal last_reason
+        nonlocal last_reason, postcondition_repairs
         last_reason = f"{result.failure_class}: {result.reason or result.outcome}"
-        if stage == "review" and result.outcome != "ok":
+        if result.outcome == "ok":
+            try:
+                evidence = verify_stage(
+                    stage,
+                    branch,
+                    plan_dir,
+                    manifest,
+                    baseline,
+                    artifacts_before,
+                )
+            except PipelineError as exc:
+                if not result.resumable or postcondition_repairs >= MAX_POSTCONDITION_REPAIRS:
+                    raise
+                postcondition_repairs += 1
+                result.outcome = "blocked"
+                result.requires_user = False
+                result.reason = f"{POSTCONDITION_REJECTED}{exc}"
+                last_reason = f"stage_contract: {result.reason}"
+                reporter.emit(
+                    "postcondition_repair",
+                    stage=stage,
+                    provider=route["provider"],
+                    model=route["model"],
+                    session_id=result.session_id,
+                    message=f"repair {postcondition_repairs}/{MAX_POSTCONDITION_REPAIRS} in the same session: {str(exc)[:180]}",
+                )
+                return None
+            state.pop("pending_input", None)
+            reporter.emit(
+                "stage_completed",
+                stage=stage,
+                provider=route["provider"],
+                model=route["model"],
+                session_id=result.session_id,
+                message=evidence,
+            )
+            return evidence
+        if review_outcome_is_advisory(stage, result):
             if result.changed_paths and not stage_paths_allowed(stage, result.changed_paths, manifest):
                 raise PipelineError(
                     f"review provider stopped after out-of-plan edits: {', '.join(result.changed_paths)}"
@@ -1909,25 +2029,6 @@ def run_ai_stage(
             )
             reporter.emit(
                 "review_advisory",
-                stage=stage,
-                provider=route["provider"],
-                model=route["model"],
-                session_id=result.session_id,
-                message=evidence,
-            )
-            return evidence
-        if result.outcome == "ok":
-            evidence = verify_stage(
-                stage,
-                branch,
-                plan_dir,
-                manifest,
-                baseline,
-                artifacts_before,
-            )
-            state.pop("pending_input", None)
-            reporter.emit(
-                "stage_completed",
                 stage=stage,
                 provider=route["provider"],
                 model=route["model"],

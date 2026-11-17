@@ -71,7 +71,8 @@ risk, and optional diff-scoped mutation command. The runner:
 - pipeline review may apply safe in-plan improvements and reruns only narrow affected checks, never
   the full test/E2E suite; it receives the `/add-rule` registry, metadata, allowlist, and scoped
   rules, then repeats the fast deterministic convention/secret scan after review edits. Tier-1
-  convention violations must be repaired; direct review is check-only. Publish runs only a
+  convention violations must be repaired; direct review edits only the findings the user picks.
+  Publish runs only a
   fast safety scan because implementation owns named test verification.
 
 Direct `/commit` runs only fast diff-scoped convention/Semgrep and secret/gitleaks checks; it does

@@ -60,6 +60,23 @@ session and therefore adds no model call. A direct manual invocation uses the cu
 
       Print waiting lines to the user. On timeout (exit 4) → stop and report queue status.
    4. Use the `image=` from acquire (`apaleo-ui-api:wt-<slug>`), rebuild/repoint/recreate `api` only while holding the lock. If `$WT/identity` exists and this branch changes Identity, also use `identity_image=` (`apaleo-identity:wt-<slug>`), build from `$WT/identity`, pin `IDENTITY_IMAGE` in gitignored `development/apaleo/.env`, recreate `identity` — `references/identity.md`. Run E2E.
+   **While the branch image still runs**, once the E2E specs are green:
+
+   - **API samples** (when the plan changes an HTTP endpoint). Assertions check only what they
+     assert, so look at the whole response once. Write a throwaway spec at
+     `e2e/tests/zz-scratch/<slug>-samples-spec.ts`. Add `e2e/tests/zz-scratch/` to the repo's
+     local exclude file (`git rev-parse --git-path info/exclude`) so it is never committed or
+     seen as a change. Reuse the feature spec's setup helpers. Call each changed endpoint once
+     on the happy path and once per new error, print the status and JSON body, run it with
+     `yarn test -- tests/zz-scratch/<slug>-samples-spec.ts`, then delete the spec. Save the
+     request line, status, and body for each call in `$ROOT/ai-plans/<branch>/api-samples.md`.
+     Never print tokens or secrets. Read the samples against `product.md` `## Examples` and the
+     Swagger: enum wire values, date formats, null vs missing fields, status codes, and field
+     names. Fix any mismatch before continuing.
+   - **UI check** (only when `## Tests` has a `ui` row). Open the local app in the host's browser
+     tool, walk the plan's steps, save a screenshot per step under `$ROOT/ai-plans/<branch>/ui/`,
+     and note the result in `api-samples.md`.
+
    5. In `finally`-style cleanup, restore the prior image/configuration and verify its health. Then always
       release when the E2E phase ends (unless user asks to keep the seat). Release removes the unused
       branch-scoped image and caps BuildKit cache; it does not touch containers or volumes:

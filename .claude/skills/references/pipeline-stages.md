@@ -33,8 +33,8 @@ This table is guidance. The user confirms the lane during `/specify`.
 | Stage | Selection rule |
 |---|---|
 | `implement-tests` | Required when the plan adds/changes tests. Test-only red phase; assertion failure required. |
-| `implement` | Always required. Product construction plus the full verify/fix procedure and parsed evidence. |
-| `review` | Optional independent fresh-context review against the plan, tests, rules, and semantic reuse/DRY. In the pipeline it applies safe plan-authorized corrections and same-behavior improvements, then verifies narrowly; its outcome is advisory and never holds up delivery. Direct `/review <branch> [focus]` is check-only and stops for confirmation before `/specify`/`/implement` changes anything. |
+| `implement` | Always required. Builds the plan's steps, then runs the full verify/fix procedure with parsed evidence and API samples. In the manual lane it also writes the tests first and self-reviews (Tier 1, test strength, polish). |
+| `review` | Optional fresh-context, two-tier review. Tier 1 finds, proves, and fixes bugs, security, performance, and contract problems. Tier 2 applies the rules and polishes changed lines without changing behaviour. Its outcome is advisory, except that an unfixable High finding pauses for the user. Direct `/review <branch> [bugs\|polish] [focus]` reports first and applies only the findings the user picks. |
 | `commit-and-push` | Optional deterministic scan/commit/push. |
 | `draft-pr` | Optional; requires `commit-and-push`. |
 
@@ -48,13 +48,18 @@ make these commits.
 
 When `implement` or `review` changes a `test_paths` file, the runner compares it with the
 `implement-tests` commit. An import or comment edit stays. A setup or helper edit stays and is
-named. A skip, a deleted test, or an assertion that was removed or rewritten is restored from
+named; review receives those files with a diff command and checks that none makes a test easier
+to pass. Assertion lines that are only moved or re-indented count as unchanged. The patterns cover
+Jest and C# (xUnit `Skip`/`[Ignore]`, `[Fact]`/`[Theory]` attributes, `[InlineData]` rows, and
+`Verify`/`Times`). A skip, a deleted test, or an assertion that was removed or rewritten is restored from
 that commit, and the acceptance command for that file runs once. A passing re-run is a real
 success. A failing re-run still publishes, and the draft PR names the restored hunk and the
 failing command. That result is not recorded as a passed verification.
 
 Implementation and publishing safety checks remain enforced. Review is advisory: provider/report,
-convention, reuse, build, and environment issues are recorded and delivery continues. Comment
+convention, reuse, build, and environment issues are recorded and delivery continues. The one
+exception is a High finding the reviewer truly cannot fix, which ends the stage with
+`PIPELINE_INPUT_REQUIRED` and waits for the user. Comment
 handling, CI diagnosis, and staging smoke remain manual skills.
 
 ## Default routes
